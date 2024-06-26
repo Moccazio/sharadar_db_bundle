@@ -39,7 +39,7 @@ python setup.py install
 cd $PYTHON_LIBS
 git clone https://github.com/Moccazio/sharadar_db_bundle
 #git clone  https://github.com/alphaville76/sharadar_db_bundle.git
-cd $PYTHON_LIBS/sharadar-zipline
+cd $PYTHON_LIBS/sharadar_db_bundle
 pip install -r requirements.txt
 python setup.py install
 
