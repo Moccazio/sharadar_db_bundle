@@ -4,9 +4,14 @@ Unlike the standard zipline bundles, it allows incremental updates, because sql 
 
 Step 1. Make sure you can access Quandl, and you have a Quandl api key. I have set my Quandl api key as an environment variable.
 
->export NASDAQ_API_KEY="your API key"  
+>export NASDAQ_API_KEY="your API key"
+
+
+>conda env config vars set NASDAQ_API_KEY="your API key"  
 
 Step 2. Clone or download the code and install it using:
+
+>git clone https://github.com/Moccazio/sharadar_db_bundle
 
 >python setup.py install 
 
