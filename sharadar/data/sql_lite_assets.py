@@ -17,18 +17,17 @@ from zipline.assets.asset_db_schema import (
 from zipline.utils.memoize import lazyval
 from sqlalchemy import text
 
-# imports for retry mechanism and a timeout for the SQLite connection
 import time
 import sqlite3
 import functools
 import sqlalchemy
 from sqlalchemy.exc import OperationalError
 from sqlalchemy import text
-import time
 
 # Assuming _check_field, Sector, and Exchange are imported at the top of your file
-#from sharadar.pipeline.factors import Sector, Exchange  
+# from sharadar.pipeline.factors import Sector, Exchange  
 # Cache static expected lists if they don't change often
+
 EXPECTED_CATEGORIES = [
     'ADR Common Stock', 'ADR Common Stock Primary Class', 'ADR Common Stock Secondary Class',
     'ADR Common Stock Warrant', 'ADR Preferred Stock', 'ADR Stock Warrant', 'CEF', 'CEF Preferred',
@@ -42,6 +41,7 @@ EXPECTED_SECTORS = ['Basic Materials', 'Communication Services', 'Consumer Cycli
                       'Financial Services', 'Healthcare', 'Industrials', 'Real Estate', 'Technology', 'Utilities'] #= Sector().categories.copy()
 EXPECTED_EXCHANGES = ['BATS', 'INDEX', 'NASDAQ', 'NYSE', 'NYSEARCA', 'NYSEMKT', 'OTC'] # Exchange().categories.copy()
 EXPECTED_EXCHANGES.insert(0, 'AMEX')
+
 
 class SQLiteAssetFinder(AssetFinder):
 
@@ -278,7 +278,7 @@ class SQLiteAssetDBWriter(AssetDBWriter):
             asset_router.c.asset_type.name: asset_type,
         })
         self._write_df_to_table(asset_router, df, txn, chunk_size, idx=False)
-        #df.to_sql(asset_router.name, txn.connection, if_exists='append', index=False, chunksize=chunk_size)
+        # df.to_sql(asset_router.name, txn.connection, if_exists='append', index=False, chunksize=chunk_size)
 
     def escape(self, name):
         # See https://stackoverflow.com/questions/6514274/how-do-you-escape-strings\
@@ -324,7 +324,6 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         )
         return insert_statement
 
-    
     def _write_df_to_table(self, tbl, df, txn, chunk_size=None, idx=True, idx_label=None):
         index_label = (
             idx_label
@@ -398,4 +397,3 @@ class SQLiteAssetDBWriter(AssetDBWriter):
                 else:
                     raise  # Re-raise the exception if it's not a lock issue
         return False  # Return False if all retries failed
-
