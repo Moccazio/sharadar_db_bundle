@@ -18,7 +18,7 @@ Step 2. Clone or download the code and install it using:
 
 >python setup.py install
 
-create a folder for saving logs
+create folder for saving logs
 
 >mkdir ~/log
 
