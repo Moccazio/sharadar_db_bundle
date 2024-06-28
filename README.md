@@ -6,14 +6,17 @@ Step 1. Make sure you can access Quandl, and you have a Quandl api key. I have s
 
 >export NASDAQ_API_KEY="your API key"
 
-
 >conda env config vars set NASDAQ_API_KEY="your API key"  
 
 Step 2. Clone or download the code and install it using:
 
 >git clone https://github.com/Moccazio/sharadar_db_bundle
 
->python setup.py install 
+>cd sharadar_db_bundle
+
+>pip install -r requirements.txt
+
+>python setup.py install
 
 For zipline in order to build the cython files run:
 >python setup.py build_ext --inplace
