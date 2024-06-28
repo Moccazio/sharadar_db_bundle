@@ -17,6 +17,31 @@ from zipline.assets.asset_db_schema import (
 from zipline.utils.memoize import lazyval
 from sqlalchemy import text
 
+# imports for retry mechanism and a timeout for the SQLite connection
+import time
+import sqlite3
+import functools
+import sqlalchemy
+from sqlalchemy.exc import OperationalError
+from sqlalchemy import text
+import time
+
+# Assuming _check_field, Sector, and Exchange are imported at the top of your file
+#from sharadar.pipeline.factors import Sector, Exchange  
+# Cache static expected lists if they don't change often
+EXPECTED_CATEGORIES = [
+    'ADR Common Stock', 'ADR Common Stock Primary Class', 'ADR Common Stock Secondary Class',
+    'ADR Common Stock Warrant', 'ADR Preferred Stock', 'ADR Stock Warrant', 'CEF', 'CEF Preferred',
+    'CEF Warrant', 'Canadian Common Stock', 'Canadian Common Stock Primary Class',
+    'Canadian Common Stock Secondary Class', 'Canadian Common Stock Warrant', 'Canadian Preferred Stock',
+    'Canadian Stock Warrant', 'Domestic Common Stock', 'Domestic Common Stock Primary Class',
+    'Domestic Common Stock Secondary Class', 'Domestic Common Stock Warrant', 'Domestic Preferred Stock',
+    'Domestic Stock Warrant', 'ETD', 'ETF', 'ETMF', 'ETN', 'IDX', 'UNIT'
+    ]
+EXPECTED_SECTORS = ['Basic Materials', 'Communication Services', 'Consumer Cyclical', 'Consumer Defensive', 'Energy',
+                      'Financial Services', 'Healthcare', 'Industrials', 'Real Estate', 'Technology', 'Utilities'] #= Sector().categories.copy()
+EXPECTED_EXCHANGES = ['BATS', 'INDEX', 'NASDAQ', 'NYSE', 'NYSEARCA', 'NYSEMKT', 'OTC'] # Exchange().categories.copy()
+EXPECTED_EXCHANGES.insert(0, 'AMEX')
 
 class SQLiteAssetFinder(AssetFinder):
 
@@ -253,7 +278,7 @@ class SQLiteAssetDBWriter(AssetDBWriter):
             asset_router.c.asset_type.name: asset_type,
         })
         self._write_df_to_table(asset_router, df, txn, chunk_size, idx=False)
-        # df.to_sql(asset_router.name, txn.connection, if_exists='append', index=False, chunksize=chunk_size)
+        #df.to_sql(asset_router.name, txn.connection, if_exists='append', index=False, chunksize=chunk_size)
 
     def escape(self, name):
         # See https://stackoverflow.com/questions/6514274/how-do-you-escape-strings\
@@ -299,6 +324,7 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         )
         return insert_statement
 
+    
     def _write_df_to_table(self, tbl, df, txn, chunk_size=None, idx=True, idx_label=None):
         index_label = (
             idx_label
@@ -307,81 +333,69 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         )
         cmd = self.insert_statement(df, tbl.name, idx, index_label)
 
+        max_attempts = 5  # Maximum number of retry attempts
+        delay = 1  # Delay in seconds between attempts
+
         for index, row in df.iterrows():
             values = row.values
             if idx:
                 values = np.insert(values, 0, str(index), axis=0)
 
             params = dict(zip([str(x) for x in range(0, len(values))], values.flatten()))
-            with self.engine.connect() as conn:
-                conn.execute(text(cmd), params)
-                conn.commit()
+            attempt = 0
+            while attempt < max_attempts:
+                try:
+                    with self.engine.connect() as conn:
+                        conn.execute(text(cmd), params)
+                        conn.commit()
+                    break  # Break the loop if operation is successful
+                except OperationalError as e:
+                    if 'database is locked' in str(e):
+                        print(f"Attempt {attempt + 1} of {max_attempts}: Database is locked, retrying in {delay} seconds...")
+                        time.sleep(delay)
+                        attempt += 1
+                    else:
+                        raise  # Raise if the error is not a lock
+                except Exception as e:
+                    raise  # Raise for any other exceptions
+            else:
+                raise Exception(f"Failed to write to table after {max_attempts} attempts due to database lock.")
 
     def check_sanity(self):
         """
         Check if there were changes in some metadata
         """
-
-        sane = True
-        field = 'category'
-
-        expected = [
-            'ADR Common Stock',
-            'ADR Common Stock Primary Class',
-            'ADR Common Stock Secondary Class',
-            'ADR Common Stock Warrant',
-            'ADR Preferred Stock',
-            'ADR Stock Warrant',
-            'CEF',
-            'CEF Preferred',
-            'CEF Warrant',
-            'Canadian Common Stock',
-            'Canadian Common Stock Primary Class',
-            'Canadian Common Stock Secondary Class',
-            'Canadian Common Stock Warrant',
-            'Canadian Preferred Stock',
-            'Canadian Stock Warrant',
-            'Domestic Common Stock',
-            'Domestic Common Stock Primary Class',
-            'Domestic Common Stock Secondary Class',
-            'Domestic Common Stock Warrant',
-            'Domestic Preferred Stock',
-            'Domestic Stock Warrant',
-            'ETD',
-            'ETF',
-            'ETMF',
-            'ETN',
-            'IDX',
-            'UNIT'
+        checks = [
+            ('category', EXPECTED_CATEGORIES),
+            ('sector', EXPECTED_SECTORS),
+            ('exchange', EXPECTED_EXCHANGES)
         ]
 
-        if not self._check_field(field, expected):
-            sane = False
+        for field, expected in checks:
+            if not self._check_field(field, expected):
+                return False  # Early termination on first failure
 
-        field = 'sector'
-        from sharadar.pipeline.factors import Sector
-        expected = Sector().categories.copy()
-        if not self._check_field(field, expected):
-            sane = False
+        return True
 
-        field = 'exchange'
-        from sharadar.pipeline.factors import Exchange
-        # Bug in sharadar, only one stock for AMEX: Thomas Equipment delisted in 2006
-        expected = Exchange().categories.copy()
-        expected.insert(0, 'AMEX')
-        if not self._check_field(field, expected):
-            sane = False
-
-        return sane
 
     def _check_field(self, field, expected):
-        sql = "SELECT DISTINCT(value) as r FROM equity_supplementary_mappings WHERE field = '%s' ORDER BY r;" % field
-        with self.engine.connect() as conn:
-            ret = [x[0] for x in conn.execute(text(sql)).fetchall()]
-        ok = np.array_equal(ret, expected)
-        if not ok:
-            from sharadar.util.logger import log
-            log.error("Field '%s' changed!\nActual:\n  %s\nExpected:\n  %s" % (field, ret, expected))
-            return False
-        else:
-            return True
+        retries = 3  # Number of retries
+        wait = 1  # Wait 1 second between retries
+        for attempt in range(retries):
+            try:
+                # Setting timeout for the SQLite connection
+                engine = self.engine.execution_options(isolation_level="AUTOCOMMIT", connect_args={'timeout': 30})
+                sql = "SELECT DISTINCT(value) as r FROM equity_supplementary_mappings WHERE field = '%s' ORDER BY r;" % field
+                with engine.connect() as conn:
+                    ret = [x[0] for x in conn.execute(text(sql)).fetchall()]
+                ok = np.array_equal(ret, expected)
+                return ok
+            except sqlalchemy.exc.OperationalError as e:
+                if 'locked' in str(e):
+                    print(f"Attempt {attempt + 1} of {retries}: Database is locked, retrying in {wait} seconds...")
+                    time.sleep(wait)
+                    wait *= 2  # Exponential backoff
+                else:
+                    raise  # Re-raise the exception if it's not a lock issue
+        return False  # Return False if all retries failed
+
