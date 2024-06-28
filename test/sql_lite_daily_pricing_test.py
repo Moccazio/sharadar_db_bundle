@@ -26,7 +26,6 @@ def create_data_list(df, sharadar_metadata_df):
 
         sid = sharadar_metadata.loc['permaticker']
 
-
         # drop metadata columns
         df_ticker = df_ticker.drop(['ticker', 'dividends'], axis=1)
 
@@ -45,7 +44,7 @@ related_tickers = sharadar_metadata_df['relatedtickers'].dropna()
 related_tickers = ' ' + related_tickers.astype(str) + ' '
 
 def dt(s):
-    return pd.to_datetime(s, utc=True)
+    return pd.to_datetime(s)
 
 start = dt('2019-04-16')
 end = dt('2019-04-22')
