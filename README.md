@@ -18,6 +18,10 @@ Step 2. Clone or download the code and install it using:
 
 >python setup.py install
 
+create a folder for saving logfiles
+
+>mkdir ~/log
+
 For zipline in order to build the cython files run:
 >python setup.py build_ext --inplace
 
