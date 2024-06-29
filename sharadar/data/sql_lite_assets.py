@@ -378,7 +378,7 @@ class SQLiteAssetDBWriter(AssetDBWriter):
 
 
     def _check_field(self, field, expected):
-        retries = 50  # Number of retries
+        retries = 10  # Number of retries
         wait = 1  # Wait 1 second between retries
         for attempt in range(retries):
             try:
