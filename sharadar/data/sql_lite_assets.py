@@ -17,12 +17,12 @@ from zipline.assets.asset_db_schema import (
 from zipline.utils.memoize import lazyval
 from sqlalchemy import text
 
+import random
 import time
 import sqlite3
 import functools
 import sqlalchemy
 from sqlalchemy.exc import OperationalError
-from sqlalchemy import text
 
 # Assuming _check_field, Sector, and Exchange are imported at the top of your file
 # from sharadar.pipeline.factors import Sector, Exchange  
@@ -332,8 +332,7 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         )
         cmd = self.insert_statement(df, tbl.name, idx, index_label)
 
-        max_attempts = 5  # Maximum number of retry attempts
-        delay = 1  # Delay in seconds between attempts
+        max_attempts = 10  # Maximum number of retry attempts
 
         for index, row in df.iterrows():
             values = row.values
@@ -350,8 +349,9 @@ class SQLiteAssetDBWriter(AssetDBWriter):
                     break  # Break the loop if operation is successful
                 except OperationalError as e:
                     if 'database is locked' in str(e):
-                        print(f"Attempt {attempt + 1} of {max_attempts}: Database is locked, retrying in {delay} seconds...")
-                        time.sleep(delay)
+                        wait_time = (2 ** attempt) + random.random()  # Exponential backoff + jitter
+                        print(f"Attempt {attempt + 1} of {max_attempts}: Database is locked, retrying in {wait_time:.2f} seconds...")
+                        time.sleep(wait_time)
                         attempt += 1
                     else:
                         raise  # Raise if the error is not a lock
@@ -378,7 +378,7 @@ class SQLiteAssetDBWriter(AssetDBWriter):
 
 
     def _check_field(self, field, expected):
-        retries = 3  # Number of retries
+        retries = 50  # Number of retries
         wait = 1  # Wait 1 second between retries
         for attempt in range(retries):
             try:
