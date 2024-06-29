@@ -3,10 +3,10 @@
 conda create -n py310 python=3.10 pandas numpy -y
 source activate py310
 
-# mkdir ~/python_libs
+mkdir ~/miniconda3/python_libs
 
 python -m pip install --upgrade pip
-export PYTHON_LIBS=~/miniconda3/envs/py310/lib 
+export PYTHON_LIBS=~/miniconda3/python_libs
 
 #export PYTHON_LIBS=~/python_libs
 
@@ -20,11 +20,11 @@ cd ta-lib
 make
 
 # Install zipline-reloaded with source code
-#pip install zipline-reloaded # for dependecies
-#git clone git@github.com:stefan-jansen/zipline-reloaded.git
-#cd zipline-reloaded
-#python setup.py build_ext --inplace
-#python setup.py install
+pip install zipline-reloaded # for dependecies
+git clone git@github.com:stefan-jansen/zipline-reloaded.git
+cd zipline-reloaded
+python setup.py build_ext --inplace
+python setup.py install
 
 # Install TWS api
 cd $PYTHON_LIBS
@@ -38,6 +38,7 @@ python setup.py install
 cd $PYTHON_LIBS
 git clone https://github.com/Moccazio/sharadar_db_bundle
 cd $PYTHON_LIBS/sharadar_db_bundle
+pip install -r requirements.txt
 pip install -r requirements.txt --upgrade --no-deps
 python setup.py install
 
@@ -46,6 +47,7 @@ then
 echo "INSTALLATION SUCCESSFUL"
 else
 echo "INSTALLATION FAILED"
+source deactivate py310
 conda remove --name py310 --all -y
 fi
 
