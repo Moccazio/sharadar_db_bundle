@@ -287,14 +287,12 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         # Ensure the string does not include any NUL characters.
         # Replace all " with "".
         # Wrap the entire thing in double quotes.
-
         try:
             uname = str(name).encode("utf-8", "strict").decode("utf-8")
         except UnicodeError as err:
             raise ValueError(f"Cannot convert identifier to UTF-8: '{name}'") from err
         if not len(uname):
             raise ValueError("Empty table or column name specified")
-
         nul_index = uname.find("\x00")
         if nul_index >= 0:
             raise ValueError("SQLite identifier cannot contain NULs")
@@ -344,8 +342,11 @@ class SQLiteAssetDBWriter(AssetDBWriter):
             while attempt < max_attempts:
                 try:
                     with self.engine.connect() as conn:
-                        conn.execute(text(cmd), params)
-                        conn.commit()
+                        try:
+                            conn.execute(text(cmd), params)
+                            conn.commit()
+                        except:
+                            conn.rollback()
                     break  # Break the loop if operation is successful
                 except OperationalError as e:
                     if 'database is locked' in str(e):
@@ -373,7 +374,6 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         for field, expected in checks:
             if not self._check_field(field, expected):
                 return False  # Early termination on first failure
-
         return True
 
 
