@@ -342,11 +342,8 @@ class SQLiteAssetDBWriter(AssetDBWriter):
             while attempt < max_attempts:
                 try:
                     with self.engine.connect() as conn:
-                        try:
-                            conn.execute(text(cmd), params)
-                            conn.commit()
-                        except:
-                            conn.rollback()
+                        conn.execute(text(cmd), params)
+                        conn.commit()
                     break  # Break the loop if operation is successful
                 except OperationalError as e:
                     if 'database is locked' in str(e):
