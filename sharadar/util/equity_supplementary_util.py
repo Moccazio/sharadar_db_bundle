@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from zipline.utils.cli import maybe_show_progress
 
+
 def value_changed(cursor, sid, field, value):
     """
     Returns True, if the entry existed and its value changed
@@ -14,26 +15,29 @@ def value_changed(cursor, sid, field, value):
         return False
     return record[0] != value
 
+
 def insert_asset_info(sharadar_metadata_df, cursor):
     """
     Basic extra data like company name, category (ARD, Domestic), industry sector, etc...
     These are the information from the table SHARADAR/TICKERS
     """
+
     exclude_fields = ['table', 'permaticker', 'ticker', 'firstpricedate', 'lastpricedate']
-    for _, row in sharadar_metadata_df.iterrows():
+    for index, row in sharadar_metadata_df.iterrows():
         for field in row.index:
             if field not in exclude_fields:
                 sid = row['permaticker']
                 value = row[field]
                 if value is None:
                     continue
-                date = pd.to_datetime(row['firstpricedate'])
-    
-                start_date = date.value if not value_changed(cursor, sid, field, value) else pd.Timestamp.now().value
-    
+                date = row['firstpricedate']
+
+                start_date = date.value if not value_changed(cursor, sid, field, value) else pd.Timestamp("now").value
+
                 # end_date not used (set -1)
                 sql = "INSERT OR REPLACE INTO equity_supplementary_mappings (sid, field, start_date, end_date, value) VALUES(?, ?, ?, -1, ?)"
                 cursor.execute(sql, (sid, field, start_date, str(value)))
+
 
 def lookup_related_tickers(sharadar_metadata_df, related, ticker):
     related_index = related[related.str.contains(' ' + str(ticker) + ' ')].index
@@ -42,11 +46,13 @@ def lookup_related_tickers(sharadar_metadata_df, related, ticker):
     result = related_metadata[related_metadata['category'].isin(['Domestic', 'Domestic Primary'])]['permaticker']
     return int(result[0]) if len(result) > 0 else -1
 
+
 def lookup_sid(sharadar_metadata_df, related, ticker):
     try:
         return int(sharadar_metadata_df.loc[ticker]['permaticker'])
     except KeyError:
         return lookup_related_tickers(sharadar_metadata_df, related, ticker)
+
 
 def insert_fundamentals(sharadar_metadata_df, sf1_df, cursor, show_progress=True):
     tickers = sf1_df['ticker'].unique()
@@ -71,11 +77,12 @@ def insert_fundamentals(sharadar_metadata_df, sf1_df, cursor, show_progress=True
                     if type(value) == float and np.isnan(value):
                         continue
                     field = column + '_' + row['dimension'].lower()
-                    date = pd.to_datetime(datekey) + pd.Timedelta(days=1)
+                    date = datekey + pd.Timedelta(days=1)
 
                     # end_date not used (set -1)
                     sql = "INSERT OR REPLACE INTO equity_supplementary_mappings (sid, field, start_date, end_date, value) VALUES(?, ?, ?, -1, ?)"
                     cursor.execute(sql, (sid, field, date.value, str(value)))
+
 
 def insert_daily_metrics(sharadar_metadata_df, daily_df, cursor, show_progress=True):
     tickers = daily_df['ticker'].unique()
@@ -83,7 +90,7 @@ def insert_daily_metrics(sharadar_metadata_df, daily_df, cursor, show_progress=T
     # Add a space at the begin and end of relatedtickers, search for ' TICKER '
     related_tickers = ' ' + related_tickers.astype(str) + ' '
 
-    with maybe_show_progress(tickers, show_progress, label='Parsing daily metrics: ') as it:
+    with maybe_show_progress(tickers, show_progress, label='Parsing fundamental data: ') as it:
         for ticker in it:
             df_ticker = daily_df[daily_df['ticker'] == ticker]
             df_ticker.set_index('date', inplace=True)
@@ -100,4 +107,4 @@ def insert_daily_metrics(sharadar_metadata_df, daily_df, cursor, show_progress=T
 
                     # end_date not used (set -1)
                     sql = "INSERT OR REPLACE INTO equity_supplementary_mappings (sid, field, start_date, end_date, value) VALUES(?, ?, ?, -1, ?)"
-                    cursor.execute(sql, (sid, field, pd.to_datetime(date).value, str(value)))
+                    cursor.execute(sql, (sid, field, date.value, str(value)))
