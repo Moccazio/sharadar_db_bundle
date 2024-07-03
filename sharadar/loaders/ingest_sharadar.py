@@ -4,7 +4,8 @@ import pandas as pd
 import numpy as np
 import nasdaqdatalink
 
-from exchange_calendars import get_calendar
+#from exchange_calendars import get_calendar
+from zipline.utils.calendar_utils import get_calendar # zipline-reloaded
 from sharadar.util.output_dir import get_data_dir
 from sharadar.util.nasdaqdatalink_util import fetch_entire_table, fetch_table_by_date, fetch_sf1_table_date
 from sharadar.util.nasdaqdatalink_util import last_available_date
@@ -51,14 +52,16 @@ def fetch_data(start, end):
     """
     Fetch the Sharadar Equity Prices (SEP) and Sharadar Fund Prices (SFP). Entire dataset or by date.
     """
+    # aviod error when adding sids for sfp
     if must_fetch_entire_table(start):
         df_sep = fetch_entire_table(env["NASDAQ_API_KEY"], "SHARADAR/SEP", parse_dates=['date'])
-        df_sfp = fetch_entire_table(env["NASDAQ_API_KEY"], "SHARADAR/SFP", parse_dates=['date'])
+#        df_sfp = fetch_entire_table(env["NASDAQ_API_KEY"], "SHARADAR/SFP", parse_dates=['date'])
     else:
         df_sep = fetch_table_by_date(env["NASDAQ_API_KEY"], 'SHARADAR/SEP', start, end)
-        df_sfp = fetch_table_by_date(env["NASDAQ_API_KEY"], 'SHARADAR/SFP', start, end)
+#       df_sfp = fetch_table_by_date(env["NASDAQ_API_KEY"], 'SHARADAR/SFP', start, end)
 
-    df = pd.concat([df_sep, df_sfp])
+#   df = pd.concat([df_sep, df_sfp])
+    df = df_sep
     df = df.drop_duplicates().reset_index(drop=True)
     return df
 
@@ -282,6 +285,7 @@ def _ingest(start, calendar=get_calendar('XNYS'), output_dir=get_data_dir(),
 
 def create_metadata():
     sharadar_metadata_df = nasdaqdatalink.get_table('SHARADAR/TICKERS', table=['SFP', 'SEP'], paginate=True)
+    #sharadar_metadata_df = nasdaqdatalink.get_table('SHARADAR/TICKERS', table=['SEP'], paginate=True)
     sharadar_metadata_df.set_index('ticker', inplace=True)
     related_tickers = sharadar_metadata_df['relatedtickers'].dropna()
     # Add a space at the start and end of relatedtickers, search for ' TICKER '
