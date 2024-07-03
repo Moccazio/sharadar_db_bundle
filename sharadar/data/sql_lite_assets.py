@@ -3,7 +3,8 @@ from datetime import timedelta
 
 import numpy as np
 import pandas as pd
-from exchange_calendars import get_calendar
+#from exchange_calendars import get_calendar
+from zipline.utils.calendar_utils import get_calendar # zipline-reloaded
 from pandas.tseries.offsets import DateOffset
 from sharadar.util.logger import log
 from toolz import first
@@ -246,7 +247,7 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         txn.execute(text(
             "CREATE INDEX IF NOT EXISTS idx_start_date_field  ON equity_supplementary_mappings (start_date, field);"))
 
-    def _write_assets(self, asset_type, assets, txn, chunk_size, mapping_data=None):
+    def _write_assets(self, asset_type, assets, txn=None, chunk_size=None, mapping_data=None):
         if asset_type == 'future':
             tbl = futures_contracts_table
             if mapping_data is not None:
@@ -322,7 +323,7 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         )
         return insert_statement
 
-    def _write_df_to_table(self, tbl, df, txn, chunk_size=None, idx=True, idx_label=None):
+    def _write_df_to_table(self, tbl, df, txn=None, chunk_size=None, idx=True, idx_label=None):
         index_label = (
             idx_label
             if idx_label is not None else
