@@ -5,7 +5,8 @@ from contextlib import closing
 import click
 import numpy as np
 import pandas as pd
-from exchange_calendars import get_calendar
+#from exchange_calendars import get_calendar
+from zipline.utils.calendar_utils import get_calendar # zipline-reloaded
 
 from sharadar.util.logger import log
 from sharadar.util.output_dir import get_data_dir
@@ -418,3 +419,4 @@ class SQLiteDailyAdjustmentWriter(SQLiteAdjustmentWriter):
             'effective_date': input_dates[valid_ratio_mask],
             'ratio': ratio[valid_ratio_mask],
         })
+
