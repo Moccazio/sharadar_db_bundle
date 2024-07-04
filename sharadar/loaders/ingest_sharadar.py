@@ -52,16 +52,14 @@ def fetch_data(start, end):
     """
     Fetch the Sharadar Equity Prices (SEP) and Sharadar Fund Prices (SFP). Entire dataset or by date.
     """
-    # aviod error when adding sids for sfp
     if must_fetch_entire_table(start):
         df_sep = fetch_entire_table(env["NASDAQ_API_KEY"], "SHARADAR/SEP", parse_dates=['date'])
-#        df_sfp = fetch_entire_table(env["NASDAQ_API_KEY"], "SHARADAR/SFP", parse_dates=['date'])
+        df_sfp = fetch_entire_table(env["NASDAQ_API_KEY"], "SHARADAR/SFP", parse_dates=['date'])
     else:
         df_sep = fetch_table_by_date(env["NASDAQ_API_KEY"], 'SHARADAR/SEP', start, end)
-#       df_sfp = fetch_table_by_date(env["NASDAQ_API_KEY"], 'SHARADAR/SFP', start, end)
+       df_sfp = fetch_table_by_date(env["NASDAQ_API_KEY"], 'SHARADAR/SFP', start, end)
 
-#   df = pd.concat([df_sep, df_sfp])
-    df = df_sep
+    df = pd.concat([df_sep, df_sfp])
     df = df.drop_duplicates().reset_index(drop=True)
     return df
 
@@ -95,17 +93,16 @@ def create_dividends_df(sharadar_metadata_df, related_tickers, existing_tickers,
     dividends_df['record_date'] = dividends_df['declared_date'] = dividends_df['pay_date'] = dividends_df[
         'ex_date'] = dividends_df.index
     dividends_df.drop(['action', 'date', 'name', 'contraticker', 'contraname', 'ticker'], axis=1, inplace=True)
+    dividends_df.sort_index(inplace=True)
     return dividends_df
 
 
 def create_splits_df(sharadar_metadata_df, related_tickers, existing_tickers, start):
     splits_df = nasdaqdatalink.get_table('SHARADAR/ACTIONS', date={'gte': start}, action=['split'], paginate=True)
-
     # Remove splits_df entries, whose ticker doesn't exist
     tickers_splits = splits_df['ticker'].unique()
     tickers_intersect = set(existing_tickers).intersection(tickers_splits)
     splits_df = splits_df.loc[splits_df['ticker'].isin(tickers_intersect)]
-
     # The date dtype is already datetime64[ns]
     splits_df['value'] = 1.0 / splits_df['value']
     splits_df.rename(
@@ -119,6 +116,9 @@ def create_splits_df(sharadar_metadata_df, related_tickers, existing_tickers, st
     splits_df['ratio'] = splits_df['ratio'].astype(float)
     splits_df['sid'] = splits_df['ticker'].apply(lambda x: lookup_sid(sharadar_metadata_df, related_tickers, x))
     splits_df.drop(['action', 'name', 'contraticker', 'contraname', 'ticker'], axis=1, inplace=True)
+    splits_df.index = splits_df['effective_date']
+    splits_df.sort_index(inplae=True)
+    splits_df.reset_index(drop=True,inplace=True)
     return splits_df
 
 
