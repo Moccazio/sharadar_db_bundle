@@ -24,18 +24,15 @@ import traceback
 
 nasdaqdatalink.ApiConfig.api_key = env["NASDAQ_API_KEY"]
 
-
 def process_data_table(df):
     # 'close' prices are adjusted only for stock splits, but not for dividends.
     m = df['closeunadj'] / df['close']
-
     # Remove the split factor to get back the unadjusted data
     df['open'] *= m
     df['high'] *= m
     df['low'] *= m
     df['close'] = df['closeunadj']
     df['volume'] /= m
-
     df = df.drop(['closeunadj', 'closeadj', 'lastupdated'], axis=1)
     df = df.replace([np.inf, -np.inf, np.nan], 0)
     df = df.fillna({'volume': 0})
@@ -58,7 +55,6 @@ def fetch_data(start, end):
     else:
         df_sep = fetch_table_by_date(env["NASDAQ_API_KEY"], 'SHARADAR/SEP', start, end)
        df_sfp = fetch_table_by_date(env["NASDAQ_API_KEY"], 'SHARADAR/SFP', start, end)
-
     df = pd.concat([df_sep, df_sfp])
     df = df.drop_duplicates().reset_index(drop=True)
     return df
@@ -66,14 +62,12 @@ def fetch_data(start, end):
 
 def get_data(sharadar_metadata_df, related_tickers, start=None, end=None):
     df = fetch_data(start, end)
-
     log.info("Adding SIDs to all stocks...")
     df['sid'] = df['ticker'].apply(lambda x: lookup_sid(sharadar_metadata_df, related_tickers, x))
     # unknown sids are -1 instead of nan to preserve the integer type. Drop them.
     unknown_sids = df[df['sid'] == -1]
     df.drop(unknown_sids.index, inplace=True)
     df.set_index(['date', 'sid'], inplace=True)
-
     df = process_data_table(df)
     return df.sort_index()
 
@@ -124,26 +118,21 @@ def create_splits_df(sharadar_metadata_df, related_tickers, existing_tickers, st
 
 def synch_to_calendar(sessions, start_date, end_date, df_ticker: pd.DataFrame, df: pd.DataFrame):
     this_cal = sessions[(sessions >= start_date) & (sessions <= end_date)]
-
     missing_dates = this_cal.difference(df_ticker.index.get_level_values(0)).values
     if len(missing_dates) > 0:
         sid = df_ticker.index.get_level_values('sid')[0]
         ticker = df_ticker['ticker'][0]
         log.info("Fixing missing %d interstitial dates for %s from %s to %s: %s."
                  % (len(missing_dates), ticker, this_cal[0], this_cal[-1], missing_dates))
-
         sids = np.full(len(this_cal), sid)
         synch_index = pd.MultiIndex.from_arrays([this_cal, sids], names=('date', 'sid'))
         df_ticker_synch = df_ticker.reindex(synch_index)
-
         # Forward fill missing data, volume and dividens must remain 0
         columns_ffill = ['ticker', 'open', 'high', 'low', 'close']
-        df_ticker_synch[columns_ffill] = df_ticker_synch[columns_ffill].fillna(method='ffill')
+        df_ticker_synch[columns_ffill] = df_ticker_synch[columns_ffill].ffill() #.fillna(method='ffill')
         df_ticker_synch = df_ticker_synch.fillna({'volume': 0})
-
         # Drop remaining NaN
         df_ticker_synch.dropna(inplace=True)
-
         # drop the existing sub dataframe
         df.drop(df_ticker.index, inplace=True)
         # and concat with the new one with all the dates.
@@ -163,8 +152,49 @@ def trading_date(date, cal):
         date = date.tz_localize(None).normalize()
     return date
 
+def create_metadata():
+    sharadar_metadata_df = nasdaqdatalink.get_table('SHARADAR/TICKERS', table=['SFP', 'SEP'], paginate=True)
+    sharadar_metadata_df.set_index('ticker', inplace=True)
+    related_tickers = sharadar_metadata_df['relatedtickers'].dropna()
+    # Add a space at the start and end of relatedtickers, search for ' TICKER '
+    related_tickers = ' ' + related_tickers.astype(str) + ' '
+    return related_tickers, sharadar_metadata_df
+
+
+def create_equities_df(df, tickers, sessions, sharadar_metadata_df, show_progress):
+    # Prepare an empty DataFrame for equities, the index of this dataframe is the sid.
+    equities_df = pd.DataFrame(columns=METADATA_HEADERS)
+    with maybe_show_progress(tickers, show_progress, label='Loading custom pricing data: ') as it:
+        for ticker in it:
+            df_ticker = df[df['ticker'] == ticker]
+            df_ticker = df_ticker.sort_index()
+            sid = df_ticker.index.get_level_values('sid')[0]
+            sharadar_metadata = sharadar_metadata_df[sharadar_metadata_df['permaticker'] == sid].iloc[0, :]
+            asset_name = sharadar_metadata.loc['name']
+            # The date when this asset was created.
+            start_date = sharadar_metadata.loc['firstpricedate']
+            # The last date we have trade data for this asset.
+            end_date = sharadar_metadata.loc['lastpricedate']
+            # The first date we have trade data for this asset.
+            first_traded = start_date
+            # The date on which to close any positions in this asset.
+            auto_close_date = end_date + pd.Timedelta(days=1)
+            # The canonical name of the exchange, for example 'NYSE' or 'NASDAQ'
+            exchange = sharadar_metadata.loc['exchange']
+            if (exchange is None) or (exchange == 'None'):
+                exchange = 'OTC'
+
+            # Synch to the official exchange calendar, if necessary
+            date_index = df_ticker.index.get_level_values('date')
+            start_date_df = date_index[0]
+            end_date_df = date_index[-1]
+            synch_to_calendar(sessions, start_date_df, end_date_df, df_ticker, df)
+            # Add a row to the metadata DataFrame.
+            equities_df.loc[sid] = ticker, asset_name, start_date, end_date, first_traded, auto_close_date, exchange
+    return equities_df
+
 def _ingest(start, calendar=get_calendar('XNYS'), output_dir=get_data_dir(),
-            universe=False, sanity_check=True, use_last_available_dt=True):
+            universe=False, sanity_check=True, use_last_available_dt=False):
     os.makedirs(output_dir, exist_ok=True)
 
     print("logfiles:", log.filename)
@@ -184,7 +214,7 @@ def _ingest(start, calendar=get_calendar('XNYS'), output_dir=get_data_dir(),
         start_fetch_date = SQLiteDailyBarReader(prices_dbpath).last_available_dt.strftime('%Y-%m-%d')
 
     log.info("Start fetch date: %s" % start_fetch_date)
-
+                
     log.info("Start loading sharadar metadata...")
     related_tickers, sharadar_metadata_df = create_metadata()
     prices_df = get_data(sharadar_metadata_df, related_tickers, start_fetch_date)
@@ -281,59 +311,6 @@ def _ingest(start, calendar=get_calendar('XNYS'), output_dir=get_data_dir(),
     okay_path = os.path.join(output_dir, "ok")
     Path(okay_path).touch()
     log.info("Ingest finished!")
-
-
-def create_metadata():
-    sharadar_metadata_df = nasdaqdatalink.get_table('SHARADAR/TICKERS', table=['SFP', 'SEP'], paginate=True)
-    #sharadar_metadata_df = nasdaqdatalink.get_table('SHARADAR/TICKERS', table=['SEP'], paginate=True)
-    sharadar_metadata_df.set_index('ticker', inplace=True)
-    related_tickers = sharadar_metadata_df['relatedtickers'].dropna()
-    # Add a space at the start and end of relatedtickers, search for ' TICKER '
-    related_tickers = ' ' + related_tickers.astype(str) + ' '
-    return related_tickers, sharadar_metadata_df
-
-
-def create_equities_df(df, tickers, sessions, sharadar_metadata_df, show_progress):
-    # Prepare an empty DataFrame for equities, the index of this dataframe is the sid.
-    equities_df = pd.DataFrame(columns=METADATA_HEADERS)
-    with maybe_show_progress(tickers, show_progress, label='Loading custom pricing data: ') as it:
-        for ticker in it:
-            df_ticker = df[df['ticker'] == ticker]
-            df_ticker = df_ticker.sort_index()
-
-            sid = df_ticker.index.get_level_values('sid')[0]
-
-            sharadar_metadata = sharadar_metadata_df[sharadar_metadata_df['permaticker'] == sid].iloc[0, :]
-
-            asset_name = sharadar_metadata.loc['name']
-
-            # The date when this asset was created.
-            start_date = sharadar_metadata.loc['firstpricedate']
-
-            # The last date we have trade data for this asset.
-            end_date = sharadar_metadata.loc['lastpricedate']
-
-            # The first date we have trade data for this asset.
-            first_traded = start_date
-
-            # The date on which to close any positions in this asset.
-            auto_close_date = end_date + pd.Timedelta(days=1)
-
-            # The canonical name of the exchange, for example 'NYSE' or 'NASDAQ'
-            exchange = sharadar_metadata.loc['exchange']
-            if (exchange is None) or (exchange == 'None'):
-                exchange = 'OTC'
-
-            # Synch to the official exchange calendar, if necessary
-            date_index = df_ticker.index.get_level_values('date')
-            start_date_df = date_index[0]
-            end_date_df = date_index[-1]
-            synch_to_calendar(sessions, start_date_df, end_date_df, df_ticker, df)
-
-            # Add a row to the metadata DataFrame.
-            equities_df.loc[sid] = ticker, asset_name, start_date, end_date, first_traded, auto_close_date, exchange
-    return equities_df
-
 
 def from_nasdaqdatalink():
     """
