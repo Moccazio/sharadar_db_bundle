@@ -38,12 +38,10 @@ def process_data_table(df):
     df = df.fillna({'volume': 0})
     return df
 
-
 def must_fetch_entire_table(date):
     if pd.isnull(date):
         return True
     return pd.Timestamp(date) <= OLDEST_DATE_SEP
-
 
 def fetch_data(start, end):
     """
@@ -59,7 +57,6 @@ def fetch_data(start, end):
     df = df.drop_duplicates().reset_index(drop=True)
     return df
 
-
 def get_data(sharadar_metadata_df, related_tickers, start=None, end=None):
     df = fetch_data(start, end)
     log.info("Adding SIDs to all stocks...")
@@ -71,16 +68,13 @@ def get_data(sharadar_metadata_df, related_tickers, start=None, end=None):
     df = process_data_table(df)
     return df.sort_index()
 
-
 def create_dividends_df(sharadar_metadata_df, related_tickers, existing_tickers, start):
     dividends_df = nasdaqdatalink.get_table('SHARADAR/ACTIONS', date={'gte': start},
                                                  action=['dividend', 'spinoffdividend'], paginate=True)
-
     # Remove dividends_df entries, whose ticker doesn't exist
     tickers_dividends = dividends_df['ticker'].unique()
     tickers_intersect = set(existing_tickers).intersection(tickers_dividends)
     dividends_df = dividends_df.loc[dividends_df['ticker'].isin(tickers_intersect)]
-
     dividends_df = dividends_df.rename(columns={'value': 'amount'})
     dividends_df['sid'] = dividends_df['ticker'].apply(lambda x: lookup_sid(sharadar_metadata_df, related_tickers, x))
     dividends_df.index = dividends_df['date']
@@ -89,7 +83,6 @@ def create_dividends_df(sharadar_metadata_df, related_tickers, existing_tickers,
     dividends_df.drop(['action', 'date', 'name', 'contraticker', 'contraname', 'ticker'], axis=1, inplace=True)
     dividends_df.sort_index(inplace=True)
     return dividends_df
-
 
 def create_splits_df(sharadar_metadata_df, related_tickers, existing_tickers, start):
     splits_df = nasdaqdatalink.get_table('SHARADAR/ACTIONS', date={'gte': start}, action=['split'], paginate=True)
@@ -114,7 +107,6 @@ def create_splits_df(sharadar_metadata_df, related_tickers, existing_tickers, st
     splits_df.sort_index(inplae=True)
     splits_df.reset_index(drop=True,inplace=True)
     return splits_df
-
 
 def synch_to_calendar(sessions, start_date, end_date, df_ticker: pd.DataFrame, df: pd.DataFrame):
     this_cal = sessions[(sessions >= start_date) & (sessions <= end_date)]
