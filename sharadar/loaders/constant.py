@@ -5,15 +5,28 @@ METADATA_HEADERS = ['symbol', 'asset_name', 'start_date', 'end_date', 'first_tra
 
 OLDEST_DATE_SEP = pd.Timestamp('1997-12-31')
 
+#EXCHANGE_DF = pd.DataFrame([
+#    ['NYSE', 'US'],
+#    ['NASDAQ', 'US'],
+#    ['OTC', 'US'],
+#    ['NYSEMKT', 'US'],
+#    ['NYSEARCA', 'US'],
+#    ['BATS', 'US'],
+#    ['INDEX', 'US'],
+#    ['MACRO', 'US'],
+#    ['CBOE', 'US']
+#],
+#    columns=['exchange', 'country_code'])
+
 EXCHANGE_DF = pd.DataFrame([
     ['NYSE', 'US'],
-    ['NASDAQ', 'US'],
-    ['OTC', 'US'],
     ['NYSEMKT', 'US'],
-    ['NYSEARCA', 'US'],
-    ['BATS', 'US'],
+    ['NASDAQ', 'US'],
     ['INDEX', 'US'],
-    ['MACRO', 'US'],
+    ['NYSEARCA', 'US'],
+    ['OTC', 'US'],
+    ['BATS', 'US'],
+    ['AMEX', 'US'],
     ['CBOE', 'US']
 ],
     columns=['exchange', 'country_code'])
