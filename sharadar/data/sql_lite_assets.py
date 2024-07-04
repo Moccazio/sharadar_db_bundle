@@ -240,6 +240,7 @@ class SQLiteAssetFinder(AssetFinder):
         return pd.Timestamp(res[0][0])
 
 
+
 class SQLiteAssetDBWriter(AssetDBWriter):
 
     def init_db(self, txn=None):
@@ -247,7 +248,7 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         txn.execute(text(
             "CREATE INDEX IF NOT EXISTS idx_start_date_field  ON equity_supplementary_mappings (start_date, field);"))
 
-    def _write_assets(self, asset_type, assets, txn=None, chunk_size=None, mapping_data=None):
+    def _write_assets(self, asset_type, assets, txn, chunk_size, mapping_data=None):
         if asset_type == 'future':
             tbl = futures_contracts_table
             if mapping_data is not None:
@@ -288,12 +289,14 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         # Ensure the string does not include any NUL characters.
         # Replace all " with "".
         # Wrap the entire thing in double quotes.
+
         try:
             uname = str(name).encode("utf-8", "strict").decode("utf-8")
         except UnicodeError as err:
             raise ValueError(f"Cannot convert identifier to UTF-8: '{name}'") from err
         if not len(uname):
             raise ValueError("Empty table or column name specified")
+
         nul_index = uname.find("\x00")
         if nul_index >= 0:
             raise ValueError("SQLite identifier cannot contain NULs")
@@ -323,7 +326,7 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         )
         return insert_statement
 
-    def _write_df_to_table(self, tbl, df, txn=None, chunk_size=None, idx=True, idx_label=None):
+    def _write_df_to_table(self, tbl, df, txn, chunk_size=None, idx=True, idx_label=None):
         index_label = (
             idx_label
             if idx_label is not None else
@@ -331,34 +334,16 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         )
         cmd = self.insert_statement(df, tbl.name, idx, index_label)
 
-        max_attempts = 10  # Maximum number of retry attempts
-
         for index, row in df.iterrows():
             values = row.values
             if idx:
                 values = np.insert(values, 0, str(index), axis=0)
 
             params = dict(zip([str(x) for x in range(0, len(values))], values.flatten()))
-            attempt = 0
-            while attempt < max_attempts:
-                try:
-                    with self.engine.connect() as conn:
-                        conn.execute(text(cmd), params)
-                        conn.commit()
-                    break  # Break the loop if operation is successful
-                except OperationalError as e:
-                    if 'database is locked' in str(e):
-                        wait_time = (2 ** attempt) + random.random()  # Exponential backoff + jitter
-                        print(f"Attempt {attempt + 1} of {max_attempts}: Database is locked, retrying in {wait_time:.2f} seconds...")
-                        time.sleep(wait_time)
-                        attempt += 1
-                    else:
-                        raise  # Raise if the error is not a lock
-                except Exception as e:
-                    raise  # Raise for any other exceptions
-            else:
-                raise Exception(f"Failed to write to table after {max_attempts} attempts due to database lock.")
-
+            with self.engine.connect() as conn:
+                conn.execute(text(cmd), params)
+                conn.commit()
+                
     def check_sanity(self):
         """
         Check if there were changes in some metadata
