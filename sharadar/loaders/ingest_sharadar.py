@@ -54,7 +54,7 @@ def fetch_data(start, end):
         df_sfp = fetch_entire_table(env["NASDAQ_API_KEY"], "SHARADAR/SFP", parse_dates=['date'])
     else:
         df_sep = fetch_table_by_date(env["NASDAQ_API_KEY"], 'SHARADAR/SEP', start, end)
-       df_sfp = fetch_table_by_date(env["NASDAQ_API_KEY"], 'SHARADAR/SFP', start, end)
+        df_sfp = fetch_table_by_date(env["NASDAQ_API_KEY"], 'SHARADAR/SFP', start, end)
     df = pd.concat([df_sep, df_sfp])
     df = df.drop_duplicates().reset_index(drop=True)
     return df
