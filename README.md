@@ -2,7 +2,7 @@ Sqlite based zipline bundle for the Sharadar datasets SEP, SFP and SF1.
 
 Unlike the standard zipline bundles, it allows incremental updates, because sql tables are used instead of bcolz.
 
-Make sure you can access Quandl, and you have a Nasdaq api key. I have set my Nasdaq api key as an environment variable.
+Make sure you can access Nasdaq-Data-Link, and you have a Nasdaq api key. I have set my Nasdaq api key as an environment variable.
 
 >export NASDAQ_API_KEY="your API key"
 
