@@ -42,6 +42,6 @@ with closing(sqlite3.connect(db_file)) as conn, conn, closing(conn.cursor()) as 
     insert_daily_metrics(sharadar_metadata_df, daily_df, cursor, show_progress=True)
 
 
-sf1_df = fetch_entire_table(API_KEY, "SHARADAR/SF1", parse_dates=['datekey', 'reportperiod'])
+sf1_df = fetch_entire_table(env["NASDAQ_API_KEY"], "SHARADAR/SF1", parse_dates=['datekey', 'reportperiod'])
 with closing(sqlite3.connect(db_file)) as conn, conn, closing(conn.cursor()) as cursor:
     insert_fundamentals(sharadar_metadata_df, sf1_df, cursor, show_progress=True)
