@@ -13,6 +13,7 @@ from sharadar.util.equity_supplementary_util import lookup_sid
 from sharadar.util.equity_supplementary_util import insert_asset_info, insert_fundamentals, insert_daily_metrics
 from sharadar.data.sql_lite_daily_pricing import SQLiteDailyBarWriter, SQLiteDailyBarReader, SQLiteDailyAdjustmentWriter
 from sharadar.data.sql_lite_assets import SQLiteAssetDBWriter, SQLiteAssetFinder
+from zipline.assets import AssetFinder, AssetDBWriter
 from zipline.assets import ASSET_DB_VERSION
 from zipline.utils.cli import maybe_show_progress
 from pathlib import Path
@@ -104,7 +105,7 @@ def create_splits_df(sharadar_metadata_df, related_tickers, existing_tickers, st
     splits_df['sid'] = splits_df['ticker'].apply(lambda x: lookup_sid(sharadar_metadata_df, related_tickers, x))
     splits_df.drop(['action', 'name', 'contraticker', 'contraname', 'ticker'], axis=1, inplace=True)
     splits_df.index = splits_df['effective_date']
-    splits_df.sort_index(inplae=True)
+    splits_df.sort_index(inplace=True)
     splits_df.reset_index(drop=True,inplace=True)
     return splits_df
 
@@ -113,7 +114,7 @@ def synch_to_calendar(sessions, start_date, end_date, df_ticker: pd.DataFrame, d
     missing_dates = this_cal.difference(df_ticker.index.get_level_values(0)).values
     if len(missing_dates) > 0:
         sid = df_ticker.index.get_level_values('sid')[0]
-        ticker = df_ticker['ticker'][0]
+        ticker = df_ticker['ticker'].iloc[0]
         log.info("Fixing missing %d interstitial dates for %s from %s to %s: %s."
                  % (len(missing_dates), ticker, this_cal[0], this_cal[-1], missing_dates))
         sids = np.full(len(this_cal), sid)
@@ -229,7 +230,7 @@ def _ingest(start, calendar=get_calendar('XNYS'), output_dir=get_data_dir(),
     # Write equity metadata
     log.info("Start writing equities...")
     asset_dbpath = os.path.join(output_dir, ("assets-%d.sqlite" % ASSET_DB_VERSION))
-    asset_db_writer = SQLiteAssetDBWriter(asset_dbpath)
+    asset_db_writer = AssetDBWriter(asset_dbpath)
     asset_db_writer.write(equities=equities_df, exchanges=EXCHANGE_DF)
 
     # Write PRICING data
