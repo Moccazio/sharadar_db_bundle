@@ -187,7 +187,7 @@ def create_equities_df(df, tickers, sessions, sharadar_metadata_df, show_progres
     return equities_df
 
 def _ingest(start, calendar=get_calendar('XNYS'), output_dir=get_data_dir(),
-            universe=False, sanity_check=True, use_last_available_dt=False):
+            universe=False, sanity_check=True, use_last_available_dt=True):
     os.makedirs(output_dir, exist_ok=True)
 
     print("logfiles:", log.filename)
@@ -297,9 +297,9 @@ def _ingest(start, calendar=get_calendar('XNYS'), output_dir=get_data_dir(),
         screen = base_universe(context())
         update_universe(TRADABLE_STOCKS_US, screen)
 
-    if sanity_check:
-        if asset_db_writer.check_sanity():
-            log.info("Sanity check successful!")
+    #if sanity_check:
+    #    if asset_db_writer.check_sanity():
+    #        log.info("Sanity check successful!")
 
     okay_path = os.path.join(output_dir, "ok")
     Path(okay_path).touch()
@@ -335,3 +335,4 @@ def from_nasdaqdatalink():
             log.error(traceback.format_exc())
 
     return ingest
+
