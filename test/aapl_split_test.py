@@ -12,8 +12,8 @@ pd.set_option('display.float_format', lambda x: '%.2f' % x)
 # The stock split on a 4-for-1 basis on August 28, 2020, a 7-for-1 basis on June 9, 2014,
 # and split on a 2-for-1 basis on February 28, 2005, June 21, 2000, and June 16, 1987.
 
-start = pd.to_datetime('2020-08-26', utc=True)
-end = pd.to_datetime('2020-09-02', utc=True)
+start = pd.to_datetime('2020-08-26', utc=False)
+end = pd.to_datetime('2020-09-02', utc=False)
 
 # AAPL sid 199059
 print(prices(symbols(['AAPL']), start, end))
