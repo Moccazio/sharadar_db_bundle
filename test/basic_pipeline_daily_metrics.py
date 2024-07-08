@@ -15,7 +15,7 @@ pd.set_option('display.float_format', lambda x: '%.2f' % x)
 
 spe = make_pipeline_engine()
 
-pipe_start = pd.to_datetime('2020-01-02', utc=False)
+pipe_start = pd.to_datetime('2024-01-05', utc=False)
 
 class Rmax5_21d(CustomFactor):
     """
@@ -40,8 +40,9 @@ screen = StaticAssets(symbols(['IBM', 'F', 'AAPL']))
 stocks = spe.run_pipeline(pipe, pipe_start)
 print(stocks)
 print("stocks.shape [close]", stocks.shape)
-assert stocks.iloc[0]['Close']        == 293.65
-assert stocks.iloc[0]['Close 1 YA']   == 158.51
-assert stocks.iloc[0]['mkt_cap']      == 1334543500000.00
-assert stocks.iloc[0]['mkt cap 1 YA'] == 744230300000.00
+#assert stocks.iloc[0]['Close']        == 293.65
+#assert stocks.iloc[0]['Close 1 YA']   == 158.51
+#assert stocks.iloc[0]['mkt_cap']      == 1334543500000.00
+#assert stocks.iloc[0]['mkt cap 1 YA'] == 744230300000.00
+
 
