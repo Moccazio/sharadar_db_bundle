@@ -15,7 +15,7 @@ pd.set_option('display.float_format', lambda x: '%.2f' % x)
 
 spe = make_pipeline_engine()
 
-pipe_start = pd.to_datetime('2020-01-02', utc=True)
+pipe_start = pd.to_datetime('2020-01-02', utc=False)
 
 class Rmax5_21d(CustomFactor):
     """
