@@ -29,4 +29,11 @@ After installing, initialize your newly-installed Miniconda. The following comma
   ~/miniconda3/bin/conda init bash
   ~/miniconda3/bin/conda init zsh
   ```
+  
+### Install mamba
+
+[conda] is the package manager provided by the [Anaconda](https://www.anaconda.com/) python distribution. Unfortunately, it is currently [not in very good shape](https://github.com/conda/conda/issues/9707). Instead, we'll use the more recent and much faster [mamba](https://github.com/mamba-org/mamba) package manager to install packages. You can install it using:
+```python
+conda install -n base -c conda-forge mamba
+```
 
