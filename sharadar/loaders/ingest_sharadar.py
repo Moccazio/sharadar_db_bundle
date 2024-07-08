@@ -76,13 +76,13 @@ def create_dividends_df(sharadar_metadata_df, related_tickers, existing_tickers,
     tickers_dividends = dividends_df['ticker'].unique()
     tickers_intersect = set(existing_tickers).intersection(tickers_dividends)
     dividends_df = dividends_df.loc[dividends_df['ticker'].isin(tickers_intersect)]
+
     dividends_df = dividends_df.rename(columns={'value': 'amount'})
     dividends_df['sid'] = dividends_df['ticker'].apply(lambda x: lookup_sid(sharadar_metadata_df, related_tickers, x))
     dividends_df.index = dividends_df['date']
     dividends_df['record_date'] = dividends_df['declared_date'] = dividends_df['pay_date'] = dividends_df[
         'ex_date'] = dividends_df.index
     dividends_df.drop(['action', 'date', 'name', 'contraticker', 'contraname', 'ticker'], axis=1, inplace=True)
-#    dividends_df.sort_index(inplace=True)
     return dividends_df
 
 def create_splits_df(sharadar_metadata_df, related_tickers, existing_tickers, start):
@@ -104,9 +104,6 @@ def create_splits_df(sharadar_metadata_df, related_tickers, existing_tickers, st
     splits_df['ratio'] = splits_df['ratio'].astype(float)
     splits_df['sid'] = splits_df['ticker'].apply(lambda x: lookup_sid(sharadar_metadata_df, related_tickers, x))
     splits_df.drop(['action', 'name', 'contraticker', 'contraname', 'ticker'], axis=1, inplace=True)
-#    splits_df.index = splits_df['effective_date']
-#    splits_df.sort_index(inplae=True)
-#    splits_df.reset_index(drop=True,inplace=True)
     return splits_df
 
 def synch_to_calendar(sessions, start_date, end_date, df_ticker: pd.DataFrame, df: pd.DataFrame):
