@@ -206,7 +206,8 @@ def create_report(perf, filename, now, doc=None, duration=None, param=None, info
             print("<p>Backtest executed in %s</p>" % (time.strftime("%H:%M:%S", time.gmtime(duration))), file=f)
         if doc is not None:
             print('<h3>Description</h3>', file=f)
-            print('<p style="white-space: pre">%s</p>' % doc.strip(), file=f)
+            if isinstance(doc, str):
+                print('<p style="white-space: pre">%s</p>' % doc.strip(), file=f)
         if param is not None and len(param) > 0:
             print('<h3>Parameters</h3>', file=f)
             print('<pre>%s</pre><br/>' % str(param), file=f)
@@ -273,7 +274,7 @@ def create_report(perf, filename, now, doc=None, duration=None, param=None, info
         print('<br/>', file=f)
         print('<button onclick="showElement()">Show Code</button> <button onclick="hideElement()">Hide Code</button>', file=f)
         print('<pre id="code" style="visibility: hidden">', file=f)
-        print(open(filename, "r").read(), file=f)
+#        print(open(filename, "r").read(), file=f)
         print('</pre>', file=f)
 
         print("</body>\n</html>", file=f)
