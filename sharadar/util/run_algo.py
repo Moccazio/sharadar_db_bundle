@@ -19,7 +19,8 @@ except ImportError:
     PYGMENTS = False
 import six
 from toolz import concatv
-from exchange_calendars import get_calendar
+#from exchange_calendars import get_calendar
+from zipline.utils.calendar_utils import get_calendar # zipline-reloaded
 
 from zipline.data.data_portal import DataPortal
 from sharadar.live.data_portal_live import DataPortalLive
@@ -32,7 +33,8 @@ from zipline.algorithm import TradingAlgorithm
 from sharadar.live.algorithm_live import LiveTradingAlgorithm
 from zipline.finance.blotter import Blotter
 from sharadar.util.serialization_utils import store_context
-from exchange_calendars import register_calendar_alias
+#from exchange_calendars import register_calendar_alias
+from zipline.utils.calendar_utils import register_calendar_alias
 from exchange_calendars.errors import CalendarNameCollision
 from sharadar.pipeline.engine import returns
 
