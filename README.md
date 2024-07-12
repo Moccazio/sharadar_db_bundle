@@ -50,7 +50,7 @@ To run an algorithm
 
 
 To start a notebook 
-> cd notebook
+> conda activate py310
 > jupyter notebook
 
 
