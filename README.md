@@ -51,6 +51,7 @@ To run an algorithm
 
 To start a notebook 
 > conda activate py310
+
 > jupyter notebook
 
 
