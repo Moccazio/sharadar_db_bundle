@@ -1,4 +1,5 @@
 import os
+import shutil
 from zipline.utils.paths import data_root
 
 SHARADAR_BUNDLE_NAME = 'sharadar'
@@ -22,3 +23,10 @@ def get_data_dir():
 def get_cache_dir():
     return os.path.join(create_data_dir(SHARADAR_BUNDLE_NAME), SHARADAR_BUNDLE_DIR, 'cache')
 
+def clear_cache_dir():
+    """
+    Clears the cache directory used by Sharadar.
+    """
+    cache_dir = get_cache_dir()  # Get the path to the cache directory
+    shutil.rmtree(cache_dir)  # Remove the cache directory and all its contents
+    os.makedirs(cache_dir)  # Recreate the cache directory
