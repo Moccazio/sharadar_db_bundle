@@ -7,6 +7,7 @@ import nasdaqdatalink
 #from exchange_calendars import get_calendar
 from zipline.utils.calendar_utils import get_calendar # zipline-reloaded
 from sharadar.util.output_dir import get_data_dir
+from sharadar.util.output_dir import get_cache_dir
 from sharadar.util.nasdaqdatalink_util import fetch_entire_table, fetch_table_by_date, fetch_sf1_table_date
 from sharadar.util.nasdaqdatalink_util import last_available_date
 from sharadar.util.equity_supplementary_util import lookup_sid
@@ -189,6 +190,7 @@ def create_equities_df(df, tickers, sessions, sharadar_metadata_df, show_progres
 def _ingest(start, calendar=get_calendar('XNYS'), output_dir=get_data_dir(),
             universe=False, sanity_check=True, use_last_available_dt=True):
     os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(get_cache_dir(), exist_ok=True)
 
     print("logfiles:", log.filename)
 
