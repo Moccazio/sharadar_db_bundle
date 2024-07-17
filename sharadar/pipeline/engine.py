@@ -429,21 +429,16 @@ def make_pipeline_engine(bundle=None, start=None, end=None, live=False):
     clear_cache_dir() # clear cache directory
     if bundle is None:
         bundle = load_sharadar_bundle()
-
     if start is None:
         start = bundle.equity_daily_bar_reader.first_trading_day
-
     if end is None:
         end = pd.Timestamp.today()
-
     # pipeline_loader = USEquityPricingLoader(bundle.equity_daily_bar_reader, bundle.adjustment_reader, SimpleFXRateReader())
     pipeline_loader = USEquityPricingLoader.without_fx(bundle.equity_daily_bar_reader, bundle.adjustment_reader)
-
     def choose_loader(column):
         if column in USEquityPricing.columns:
             return pipeline_loader
         raise ValueError("No PipelineLoader registered for column %s." % column)
-
     bundle.asset_finder.is_live_trading = live
     spe = BundlePipelineEngine(get_loader=choose_loader, asset_finder=bundle.asset_finder)
     return spe
