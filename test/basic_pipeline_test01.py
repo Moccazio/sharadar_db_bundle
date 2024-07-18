@@ -12,7 +12,7 @@ pd.set_option('display.float_format', lambda x: '%.2f' % x)
 
 bundle = load_sharadar_bundle()
 daily_df = nasdaqdatalink.get_table('SHARADAR/DAILY', date='2021-03-15', ticker='AAPL')
-bundle_array = bundle.asset_finder.get_daily_metrics([110096,110097,199059], 'pb', pd.to_datetime('2021-03-15', utc=True), n=1)
+bundle_array = bundle.asset_finder.get_daily_metrics([110096,110097,199059], 'pb', pd.to_datetime('2021-03-15', utc=False), n=1)
 print(daily_df)
 print(bundle_array)
 
@@ -20,7 +20,7 @@ assert bundle_array[0][2] == 31.40
 assert bundle_array[0][2] == daily_df['pb'].values[0]
 
 
-bundle_array = bundle.asset_finder.get_daily_metrics([110096,110097,199059], 'pe', pd.to_datetime('2021-03-15', utc=True), n=3)
+bundle_array = bundle.asset_finder.get_daily_metrics([110096,110097,199059], 'pe', pd.to_datetime('2021-03-15', utc=False), n=3)
 print(bundle_array)
 
 #assert (bundle_array[0] == [np.nan, -4.9, 32.6]).all()
@@ -48,7 +48,7 @@ pipe= Pipeline(columns={
 screen = StaticAssets(symbols(['AAPL']))
 )
 
-pipe_start = pd.to_datetime('2021-03-15', utc=True)
+pipe_start = pd.to_datetime('2021-03-15', utc=False)
 stocks = spe.run_pipeline(pipe, pipe_start)
 print(stocks.iloc[0])
 assert stocks.iloc[0]['EvEbit']           ==             28.90
@@ -65,7 +65,7 @@ assert stocks.iloc[0]['sharefactor_arq']  ==              1.00
 assert stocks.iloc[0]['sharesbas_arq']    ==    16788096000.00
 assert abs(stocks.iloc[0]['adv'] - 12219809367.47) <= 1e-2
 
-pipe_start = pd.to_datetime('2020-02-05', utc=True)
+pipe_start = pd.to_datetime('2020-02-05', utc=False)
 stocks = spe.run_pipeline(pipe, pipe_start)
 print(stocks.iloc[0])
 assert stocks.iloc[0]['EvEbit']           ==            21.80
@@ -82,6 +82,6 @@ assert stocks.iloc[0]['sharefactor_arq']   ==             1.00
 assert stocks.iloc[0]['sharesbas_arq']     ==   17501920000.00
 assert abs(stocks.iloc[0]['adv'] - 13253087818.53) <= 1e-2
 
-pipe_start = pd.to_datetime('2022-06-24', utc=True)
+pipe_start = pd.to_datetime('2022-06-24', utc=False)
 stocks = spe.run_pipeline(pipe, pipe_start)
 print(stocks.iloc[0])
