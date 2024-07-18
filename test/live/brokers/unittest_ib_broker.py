@@ -38,15 +38,15 @@ class TestIBBroker(WithSimParams,
 
         tws.start()
 
-        tws._add_bar('SPY', 12.4, 10, pd.to_datetime('2017-09-27 10:30:00', utc=True))
-        tws._add_bar('SPY', 12.41, 10, pd.to_datetime('2017-09-27 10:30:40', utc=True))
-        tws._add_bar('SPY', 12.44, 20, pd.to_datetime('2017-09-27 10:31:10', utc=True))
-        tws._add_bar('SPY', 12.74, 5, pd.to_datetime('2017-09-27 10:37:10', utc=True))
-        tws._add_bar('SPY', 12.99, 15, pd.to_datetime('2017-09-27 12:10:00', utc=True))
-        tws._add_bar('XIV', 100.4, 100, pd.to_datetime('2017-09-27 9:32:00', utc=True))
-        tws._add_bar('XIV', 100.41, 100, pd.to_datetime('2017-09-27 9:32:20', utc=True))
-        tws._add_bar('XIV', 100.44, 200, pd.to_datetime('2017-09-27 9:41:10', utc=True))
-        tws._add_bar('XIV', 100.74, 50, pd.to_datetime('2017-09-27 11:42:10', utc=True))
+        tws._add_bar('SPY', 12.4, 10, pd.to_datetime('2017-09-27 10:30:00', utc=False))
+        tws._add_bar('SPY', 12.41, 10, pd.to_datetime('2017-09-27 10:30:40', utc=False))
+        tws._add_bar('SPY', 12.44, 20, pd.to_datetime('2017-09-27 10:31:10', utc=False))
+        tws._add_bar('SPY', 12.74, 5, pd.to_datetime('2017-09-27 10:37:10', utc=False))
+        tws._add_bar('SPY', 12.99, 15, pd.to_datetime('2017-09-27 12:10:00', utc=False))
+        tws._add_bar('XIV', 100.4, 100, pd.to_datetime('2017-09-27 9:32:00', utc=False))
+        tws._add_bar('XIV', 100.41, 100, pd.to_datetime('2017-09-27 9:32:20', utc=False))
+        tws._add_bar('XIV', 100.44, 200, pd.to_datetime('2017-09-27 9:41:10', utc=False))
+        tws._add_bar('XIV', 100.74, 50, pd.to_datetime('2017-09-27 11:42:10', utc=False))
 
         return tws.bars
 
@@ -96,10 +96,10 @@ class TestIBBroker(WithSimParams,
                 'total_volume': [10, 10, 10, 10],
                 'vwap': [12.1, 10.1, 11.1, 14.1],
                 'single_trade_flag': [0, 1, 0, 1]}
-        last_trade_times = [pd.to_datetime('2017-06-16 10:30:00', utc=True),
-                            pd.to_datetime('2017-06-16 10:30:11', utc=True),
-                            pd.to_datetime('2017-06-16 10:30:30', utc=True),
-                            pd.to_datetime('2017-06-17 10:31:9', utc=True)]
+        last_trade_times = [pd.to_datetime('2017-06-16 10:30:00', utc=False),
+                            pd.to_datetime('2017-06-16 10:30:11', utc=False),
+                            pd.to_datetime('2017-06-16 10:30:30', utc=False),
+                            pd.to_datetime('2017-06-17 10:31:9', utc=False)]
         index = pd.DatetimeIndex(last_trade_times)
         broker = IBBroker(sentinel.tws_uri)
         tws.return_value.bars = {asset.symbol: pd.DataFrame(
@@ -157,7 +157,7 @@ class TestIBBroker(WithSimParams,
         assert len(xiv_non_na) == 3
 
         assert spy_non_na.iloc[0].name == pd.to_datetime(
-            '2017-09-27 10:30:00', utc=True)
+            '2017-09-27 10:30:00', utc=False)
         assert spy_non_na.iloc[0].open == 12.40
         assert spy_non_na.iloc[0].high == 12.41
         assert spy_non_na.iloc[0].low == 12.40
@@ -165,7 +165,7 @@ class TestIBBroker(WithSimParams,
         assert spy_non_na.iloc[0].volume == 20
 
         assert spy_non_na.iloc[1].name == pd.to_datetime(
-            '2017-09-27 10:31:00', utc=True)
+            '2017-09-27 10:31:00', utc=False)
         assert spy_non_na.iloc[1].open == 12.44
         assert spy_non_na.iloc[1].high == 12.44
         assert spy_non_na.iloc[1].low == 12.44
@@ -173,7 +173,7 @@ class TestIBBroker(WithSimParams,
         assert spy_non_na.iloc[1].volume == 20
 
         assert spy_non_na.iloc[-1].name == pd.to_datetime(
-            '2017-09-27 12:10:00', utc=True)
+            '2017-09-27 12:10:00', utc=False)
         assert spy_non_na.iloc[-1].open == 12.99
         assert spy_non_na.iloc[-1].high == 12.99
         assert spy_non_na.iloc[-1].low == 12.99
@@ -181,7 +181,7 @@ class TestIBBroker(WithSimParams,
         assert spy_non_na.iloc[-1].volume == 15
 
         assert xiv_non_na.iloc[0].name == pd.to_datetime(
-            '2017-09-27 9:32:00', utc=True)
+            '2017-09-27 9:32:00', utc=False)
         assert xiv_non_na.iloc[0].open == 100.4
         assert xiv_non_na.iloc[0].high == 100.41
         assert xiv_non_na.iloc[0].low == 100.4
@@ -209,7 +209,7 @@ class TestIBBroker(WithSimParams,
         assert order.amount == amount
         assert order.limit == limit_price
         assert order.stop == stop_price
-        assert (order.dt - pd.to_datetime('now', utc=True) <
+        assert (order.dt - pd.to_datetime('now', utc=False) <
                 pd.Timedelta('10s'))
 
     @patch('sharadar.live.brokers.ib_broker.symbol_lookup')
@@ -238,7 +238,7 @@ class TestIBBroker(WithSimParams,
         assert zp_order.amount == -40
         assert zp_order.limit == limit_price
         assert zp_order.stop == stop_price
-        assert (zp_order.dt - pd.to_datetime('now', utc=True) <
+        assert (zp_order.dt - pd.to_datetime('now', utc=False) <
                 pd.Timedelta('10s'))
 
         @patch('sharadar.live.brokers.ib_broker.symbol_lookup')
@@ -267,7 +267,7 @@ class TestIBBroker(WithSimParams,
             assert zp_order.amount == -40
             assert zp_order.limit == limit_price
             assert zp_order.stop == stop_price
-            assert (zp_order.dt - pd.to_datetime('now', utc=True) <
+            assert (zp_order.dt - pd.to_datetime('now', utc=False) <
                     pd.Timedelta('10s'))
 
     @patch('sharadar.live.brokers.ib_broker.symbol_lookup')
@@ -310,7 +310,7 @@ class TestIBBroker(WithSimParams,
         assert zp_order.amount == amount
         assert zp_order.limit == limit_price
         assert zp_order.stop == stop_price
-        assert (zp_order.dt - pd.to_datetime('now', utc=True) <
+        assert (zp_order.dt - pd.to_datetime('now', utc=False) <
                 pd.Timedelta('10s'))
 
     @patch('sharadar.live.brokers.ib_broker.symbol_lookup')
@@ -348,7 +348,7 @@ class TestIBBroker(WithSimParams,
         assert deserialized['order_type'] == order.orderType
         assert deserialized['limit_price'] == order.lmtPrice
         assert deserialized['stop_price'] == order.auxPrice
-        assert (deserialized['dt'] - pd.to_datetime('now', utc=True) <
+        assert (deserialized['dt'] - pd.to_datetime('now', utc=False) <
                 pd.Timedelta('10s'))
 
     @patch('sharadar.live.brokers.ib_broker.symbol_lookup')
@@ -417,7 +417,7 @@ class TestIBBroker(WithSimParams,
             contract = self._create_contract(str(asset.symbol))
             (shares, cum_qty, price, avg_price, exec_time, exec_id) = \
                 (int(fabs(amount)), int(fabs(amount)), 12.3, 12.31,
-                 pd.to_datetime('now', utc=True), order_count)
+                 pd.to_datetime('now', utc=False), order_count)
             exec_detail = self._create_exec_detail(
                 order.broker_order_id, shares, cum_qty,
                 price, avg_price, exec_time, exec_id)
@@ -433,6 +433,6 @@ class TestIBBroker(WithSimParams,
             assert broker.transactions[exec_id].asset == asset
             assert broker.transactions[exec_id].amount == order.amount
             assert (broker.transactions[exec_id].dt -
-                    pd.to_datetime('now', utc=True) < pd.Timedelta('10s'))
+                    pd.to_datetime('now', utc=False) < pd.Timedelta('10s'))
             assert broker.transactions[exec_id].price == price
             assert broker.orders[order.id].commission == 0
