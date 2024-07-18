@@ -19,8 +19,8 @@ def choose_loader(column):
 # Set the trading calendar
 trading_calendar = get_calendar('NYSE')
 
-start_date = pd.to_datetime('2020-08-26', utc=True)
-end_date = pd.to_datetime('2020-09-02', utc=True)
+start_date = pd.to_datetime('2020-08-26', utc=False)
+end_date = pd.to_datetime('2020-09-02', utc=False)
 bar_count = trading_calendar.sessions_distance(start_date, end_date)
 
 # Create a data portal
