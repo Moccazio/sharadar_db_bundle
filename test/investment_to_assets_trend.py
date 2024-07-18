@@ -25,7 +25,7 @@ screen = universe
 )
 
 engine = make_pipeline_engine()
-pipe_date = pd.to_datetime('2020-06-01', utc=True)
+pipe_date = pd.to_datetime('2020-06-01', utc=False)
 stocks = engine.run_pipeline(pipe, pipe_date)
 print(stocks)
 
