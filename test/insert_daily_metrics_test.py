@@ -21,7 +21,7 @@ if not os.path.exists(asset_dbpath):
 sharadar_metadata_df = nasdaqdatalink.get_table('SHARADAR/TICKERS', table='SEP', paginate=True)
 sharadar_metadata_df.set_index('ticker', inplace=True)
 
-start = pd.to_datetime('2021-03-08', utc=True)
+start = pd.to_datetime('2021-03-08', utc=False)
 daily_df = fetch_table_by_date(env["NASDAQ_API_KEY"], 'SHARADAR/DAILY', start)
 with closing(sqlite3.connect(asset_dbpath)) as conn, conn, closing(conn.cursor()) as cursor:
     insert_daily_metrics(sharadar_metadata_df, daily_df, cursor, show_progress=True)
