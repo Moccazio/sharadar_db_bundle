@@ -1,5 +1,5 @@
 import pandas as pd
-from exchange_calendars import get_calendar
+from zipline.utils.calendar_utils import get_calendar 
 
 trading_calendar = get_calendar('XNYS')
 start = pd.Timestamp.utcnow().normalize()
