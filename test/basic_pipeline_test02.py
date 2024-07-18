@@ -26,8 +26,8 @@ assert syms[0].sid == 118691
 
 spe = make_pipeline_engine()
 
-pipe_start = pd.to_datetime('2020-01-02', utc=True)
-pipe_end = pd.to_datetime('2020-01-06', utc=True)
+pipe_start = pd.to_datetime('2020-01-02', utc=False)
+pipe_end = pd.to_datetime('2020-01-06', utc=False)
 
 
 pipe = Pipeline(columns={
