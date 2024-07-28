@@ -31,3 +31,4 @@ df.set_index('timestamp', inplace=True)
 df.drop(columns=['forecast'], inplace=True)
 
 print(df.sort_index(ascending=False).head())
+df.sort_index(ascending=False).to_csv('ism_pmi.csv')
