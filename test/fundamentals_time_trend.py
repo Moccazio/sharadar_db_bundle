@@ -41,12 +41,6 @@ screen = universe
 )
 
 engine = make_pipeline_engine()
-pipe_date = pd.to_datetime('2017-09-07', utc=False)
+pipe_date = pd.to_datetime('2024-07-01', utc=False)
 stocks = engine.run_pipeline(pipe, pipe_date)
 print(stocks)
-
-#NO PERIODIC
-#                                                      ey  ey_trend  \
-#2017-09-07 00:00:00+00:00 Equity(199059 [AAPL])  0.055782  0.000066
-#                          Equity(199623 [IBM])   0.085316 -0.000013
-#                          Equity(199713 [F])     0.083262  0.000290
