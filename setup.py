@@ -9,7 +9,7 @@ setup(
     license='',
     author='',
     author_email='',
-    description='custom sharadar data bundle for zipline-reloaded',
+    description='sharadar data bundle for zipline-reloaded',
     entry_points = {
                    'console_scripts': [
                        'sharadar-zipline = sharadar.__main__:main',
