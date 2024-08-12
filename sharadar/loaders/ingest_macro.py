@@ -171,7 +171,7 @@ def investpy_ism_pmi():
         )
     data = response.json()["data"]
     df = pd.DataFrame(data, columns=['timestamp', 'value', 'forecast'])
-    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
+    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=False)
     df.set_index('timestamp', inplace=True)
     df.drop(columns=['forecast'], inplace=True)
     #
