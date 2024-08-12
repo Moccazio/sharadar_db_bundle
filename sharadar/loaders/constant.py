@@ -27,6 +27,7 @@ EXCHANGE_DF = pd.DataFrame([
     ['OTC', 'US'],
     ['BATS', 'US'],
     ['AMEX', 'US'],
+    ['MACRO', 'US'],
     ['CBOE', 'US']
 ],
     columns=['exchange', 'country_code'])
