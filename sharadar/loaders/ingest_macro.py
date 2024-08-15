@@ -4,10 +4,8 @@ from os import environ as env
 from pandas.tseries.offsets import DateOffset
 import pandas as pd
 import requests
-#from sharadar.util.output_dir import get_output_dir
 from sharadar.util.output_dir import get_data_dir as get_output_dir
 from sharadar.loaders.constant import METADATA_HEADERS
-#from exchange_calendars import get_calendar
 from zipline.utils.calendar_utils import get_calendar
 from sharadar.util.nasdaqdatalink_util import last_available_date
 import pandas_datareader.data as pdr
