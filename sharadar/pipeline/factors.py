@@ -2,7 +2,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from sharadar.pipeline.engine import BundleLoader, symbol
+from sharadar.pipeline.engine import BundleLoader, symbol, load_sharadar_bundle
 from sharadar.util.numpy_invalid_values_util import nandivide, nanlog, nansubtract, nanmean, nanvar, nanstd
 from zipline.lib.labelarray import LabelArray
 from zipline.pipeline.classifiers import CustomClassifier
@@ -13,8 +13,7 @@ from zipline.pipeline.factors import AverageDollarVolume
 from sharadar.pipeline.engine import history, returns
 from sharadar.util.logger import log
 
-
-
+bundle = load_sharadar_bundle()
 
 class Fundamentals(CustomFactor, BundleLoader):
     inputs = []
@@ -406,7 +405,7 @@ def beta_residual(Y, X, allowed_missing=0, standardize=False):
 
 class Beta(CustomFactor):
     outputs = ['beta', 'residual_var']
-    inputs = [DailyReturns(), DailyReturns()[symbol('SPY')]]
+    inputs = [DailyReturns(), DailyReturns()[symbol('SPY', as_of_date=bundle.equity_daily_bar_reader.last_available_dt)]]
     window_length = 252
     params = ('standardize',)
 
