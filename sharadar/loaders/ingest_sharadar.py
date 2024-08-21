@@ -232,7 +232,7 @@ def _ingest(start, calendar=get_calendar('XNYS'), output_dir=get_data_dir(),
     # Write equity metadata
     log.info("Start writing equities...")
     asset_dbpath = os.path.join(output_dir, ("assets-%d.sqlite" % ASSET_DB_VERSION))
-    asset_db_writer = AssetDBWriter(asset_dbpath)
+    asset_db_writer = SQLiteAssetDBWriter(asset_dbpath) #AssetDBWriter(asset_dbpath)
     asset_db_writer.write(equities=equities_df, exchanges=EXCHANGE_DF)
 
     # Write PRICING data
