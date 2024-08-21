@@ -17,6 +17,19 @@ import random
 
 nasdaqdatalink.ApiConfig.api_key = env["NASDAQ_API_KEY"]
 
+def trading_date(date, cal):
+    """
+    Given a date, return the same date if a trading session or the next valid one
+    """
+    if isinstance(date, str):
+        date = pd.Timestamp(date)
+    if date.tz is not None:
+        date = date.tz_localize(None)
+    date = date.normalize()
+    if not cal.is_session(date):
+        date = cal.next_close(date)
+        date = date.tz_localize(None).normalize()
+    return date
 
 def _add_macro_def(df, sid, start_date, end_date, ticker, asset_name):
     # The date on which to close any positions in this asset.
@@ -77,7 +90,10 @@ def create_macro_equities_df():
     return df
 
 def create_macro_prices_df(start_str: str, calendar=get_calendar('XNYS')):
+
     start = pd.to_datetime(start_str)
+
+    start = trading_date(start, calendar)
     end = pd.to_datetime(last_available_date())
 
     if start is not None and start > end:
@@ -210,11 +226,12 @@ def ingest(start):
     from zipline.assets import ASSET_DB_VERSION
     from sharadar.data.sql_lite_assets import SQLiteAssetDBWriter
     from sharadar.data.sql_lite_daily_pricing import SQLiteDailyBarWriter
-    from exchange_calendars import get_calendar
+    from zipline.utils.calendar_utils import get_calendar
     from sharadar.loaders.constant import EXCHANGE_DF
 
 
     calendar = get_calendar('XNYS')
+    start = trading_date(start, calendar)
     macro_equities_df = create_macro_equities_df()
     macro_prices_df = create_macro_prices_df(start)
     output_dir = get_output_dir()
@@ -233,7 +250,9 @@ if __name__ == "__main__":
         sys.exit(os.EX_USAGE)
 
 
-    start = '2000-01-01' if len(sys.argv) == 1 else sys.argv[1]
+    start = '2000-01-03' if len(sys.argv) == 1 else sys.argv[1]
+    calendar = get_calendar('XNYS')
+    start = trading_date(start, calendar)
 
     print("Adding macro data from %s..." % (start))
     n = ingest(start)
