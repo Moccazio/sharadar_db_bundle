@@ -16,6 +16,10 @@ from zipline.assets.asset_db_schema import (
     futures_contracts as futures_contracts_table,
 )
 from zipline.utils.memoize import lazyval
+
+from singleton_decorator import singleton
+from functools import lru_cache
+
 from sqlalchemy import text
 
 import random
@@ -43,7 +47,7 @@ EXPECTED_SECTORS = ['Basic Materials', 'Communication Services', 'Consumer Cycli
 EXPECTED_EXCHANGES = ['BATS', 'INDEX', 'NASDAQ', 'NYSE', 'NYSEARCA', 'NYSEMKT', 'OTC'] # Exchange().categories.copy()
 EXPECTED_EXCHANGES.insert(0, 'AMEX')
 
-
+@singleton
 class SQLiteAssetFinder(AssetFinder):
 
     def __init__(self, engine):
@@ -137,6 +141,7 @@ class SQLiteAssetFinder(AssetFinder):
         return pd.DataFrame(result).set_index('sid').reindex(sids).T.values.astype('float64')
 
     # @cached
+    @lru_cache(maxsize=None)
     def get_fundamentals(self, sids, field_name, as_of_date=None, n=1):
         """
         n=1 is the most recent quarter or last ttm, n=2 indicate the previous quarter or ttm and so on...
@@ -152,6 +157,7 @@ class SQLiteAssetFinder(AssetFinder):
         return pd.DataFrame(result).set_index('sid').reindex(sids).T.values.astype('float64')
 
     # @cached
+    @lru_cache(maxsize=None)
     def get_fundamentals_df_window_length(self, sids, field_name, as_of_date=None, window_length=1):
         """
         it returns an array of this form:
@@ -181,6 +187,7 @@ class SQLiteAssetFinder(AssetFinder):
         return df.values.astype('float64')
 
     # @cached
+    @lru_cache(maxsize=None)
     def get_fundamentals_ttm(self, sids, field_name, as_of_date=None, k=1):
         """
         k=1 is the sum of the last twelve months, k=2 is the sum of the previous twelve months and so on...
@@ -192,6 +199,7 @@ class SQLiteAssetFinder(AssetFinder):
         return pd.DataFrame(result).set_index('sid').reindex(sids).T.values.astype('float64')
 
     # @cached
+    @lru_cache(maxsize=None)
     def get_info(self, sids, field_name, as_of_date=None):
         """
         Unlike get_fundamentals(.), it use the string 'NA' for unknown values, 
@@ -203,6 +211,7 @@ class SQLiteAssetFinder(AssetFinder):
         return pd.DataFrame(result).set_index('sid').reindex(sids, fill_value='NA').T.values
 
     # @cached
+    @lru_cache(maxsize=None)
     def get_daily_metrics(self, sids, field_name, as_of_date=pd.Timestamp.today(), n=1, calendar=get_calendar('XNYS')):
         assert n > 0
         count = -n + 1
@@ -231,6 +240,7 @@ class SQLiteAssetFinder(AssetFinder):
     def last_available_daily_metrics_dt(self):
         return self.last_available_dt('marketcap')
 
+    @lru_cache(maxsize=None)
     def last_available_dt(self, field):
         sql = "SELECT MAX(start_date) FROM equity_supplementary_mappings WHERE field = '%s';" % field
         with self.engine.connect() as conn:
@@ -240,7 +250,7 @@ class SQLiteAssetFinder(AssetFinder):
         return pd.Timestamp(res[0][0])
 
 
-
+@singleton
 class SQLiteAssetDBWriter(AssetDBWriter):
 
     def init_db(self, txn=None):
@@ -326,23 +336,38 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         )
         return insert_statement
 
+    #def _write_df_to_table(self, tbl, df, txn, chunk_size=None, idx=True, idx_label=None):
+    #    index_label = (
+    #        idx_label
+    #        if idx_label is not None else
+    #        first(tbl.primary_key.columns).name
+    #    )
+    #    cmd = self.insert_statement(df, tbl.name, idx, index_label)
+        #
+    #    for index, row in df.iterrows():
+    #        values = row.values
+    #        if idx:
+    #            values = np.insert(values, 0, str(index), axis=0)
+            #
+    #        params = dict(zip([str(x) for x in range(0, len(values))], values.flatten()))
+    #        with self.engine.connect() as conn:
+    #            conn.execute(text(cmd), params)
+    #            conn.commit()
+    
     def _write_df_to_table(self, tbl, df, txn, chunk_size=None, idx=True, idx_label=None):
+        engine = txn.connection
         index_label = (
             idx_label
             if idx_label is not None else
             first(tbl.primary_key.columns).name
         )
         cmd = self.insert_statement(df, tbl.name, idx, index_label)
-
+        #
         for index, row in df.iterrows():
             values = row.values
             if idx:
                 values = np.insert(values, 0, str(index), axis=0)
-
-            params = dict(zip([str(x) for x in range(0, len(values))], values.flatten()))
-            with self.engine.connect() as conn:
-                conn.execute(text(cmd), params)
-                conn.commit()
+            engine.execute(cmd, tuple(values))
                 
     def check_sanity(self):
         """
