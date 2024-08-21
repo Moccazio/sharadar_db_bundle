@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
 from zipline.utils.cli import maybe_show_progress
+from functools import lru_cache
 
-
+@lru_cache(maxsize=None)
 def value_changed(cursor, sid, field, value):
     """
     Returns True, if the entry existed and its value changed
@@ -15,7 +16,7 @@ def value_changed(cursor, sid, field, value):
         return False
     return record[0] != value
 
-
+@lru_cache(maxsize=None)
 def insert_asset_info(sharadar_metadata_df, cursor):
     """
     Basic extra data like company name, category (ARD, Domestic), industry sector, etc...
@@ -38,7 +39,7 @@ def insert_asset_info(sharadar_metadata_df, cursor):
                 sql = "INSERT OR REPLACE INTO equity_supplementary_mappings (sid, field, start_date, end_date, value) VALUES(?, ?, ?, -1, ?)"
                 cursor.execute(sql, (sid, field, start_date, str(value)))
 
-
+@lru_cache(maxsize=None)
 def lookup_related_tickers(sharadar_metadata_df, related, ticker):
     related_index = related[related.str.contains(' ' + str(ticker) + ' ')].index
     related_metadata = sharadar_metadata_df.loc[related_index]
@@ -46,14 +47,14 @@ def lookup_related_tickers(sharadar_metadata_df, related, ticker):
     result = related_metadata[related_metadata['category'].isin(['Domestic', 'Domestic Primary'])]['permaticker']
     return int(result[0]) if len(result) > 0 else -1
 
-
+@lru_cache(maxsize=None)
 def lookup_sid(sharadar_metadata_df, related, ticker):
     try:
         return int(sharadar_metadata_df.loc[ticker]['permaticker'])
     except KeyError:
         return lookup_related_tickers(sharadar_metadata_df, related, ticker)
 
-
+@lru_cache(maxsize=None)
 def insert_fundamentals(sharadar_metadata_df, sf1_df, cursor, show_progress=True):
     tickers = sf1_df['ticker'].unique()
     related_tickers = sharadar_metadata_df['relatedtickers'].dropna()
@@ -83,7 +84,7 @@ def insert_fundamentals(sharadar_metadata_df, sf1_df, cursor, show_progress=True
                     sql = "INSERT OR REPLACE INTO equity_supplementary_mappings (sid, field, start_date, end_date, value) VALUES(?, ?, ?, -1, ?)"
                     cursor.execute(sql, (sid, field, date.value, str(value)))
 
-
+@lru_cache(maxsize=None)
 def insert_daily_metrics(sharadar_metadata_df, daily_df, cursor, show_progress=True):
     tickers = daily_df['ticker'].unique()
     related_tickers = sharadar_metadata_df['relatedtickers'].dropna()
