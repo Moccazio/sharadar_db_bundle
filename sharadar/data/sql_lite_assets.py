@@ -17,7 +17,7 @@ from zipline.assets.asset_db_schema import (
 )
 from zipline.utils.memoize import lazyval
 
-from singleton_decorator import singleton
+from functools import lru_cache
 
 from sqlalchemy import text
 
@@ -46,7 +46,6 @@ EXPECTED_SECTORS = ['Basic Materials', 'Communication Services', 'Consumer Cycli
 EXPECTED_EXCHANGES = ['BATS', 'INDEX', 'NASDAQ', 'NYSE', 'NYSEARCA', 'NYSEMKT', 'OTC'] # Exchange().categories.copy()
 EXPECTED_EXCHANGES.insert(0, 'AMEX')
 
-@singleton
 class SQLiteAssetFinder(AssetFinder):
 
     def __init__(self, engine):
@@ -242,8 +241,6 @@ class SQLiteAssetFinder(AssetFinder):
             return pd.NaT
         return pd.Timestamp(res[0][0])
 
-
-@singleton
 class SQLiteAssetDBWriter(AssetDBWriter):
 
     def init_db(self, txn=None):
