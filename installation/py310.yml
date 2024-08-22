@@ -20,8 +20,6 @@ dependencies:
   - conda
   - empyrical-reloaded
   - ffmpeg
-  - gym
-  - gym-box2d
   - html5lib
   - hdbscan
   - ipykernel
