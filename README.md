@@ -23,9 +23,6 @@ For installation directly into the environment, use pip:
 Create a folder for storing the log files open terminal and run:
 >mkdir ~/log
 
-For zipline in order to build the cython files run:
->python setup.py build_ext --inplace
-
 Add this code to your ~/.zipline/extension.py:
 ```python
 from zipline.data import bundles
