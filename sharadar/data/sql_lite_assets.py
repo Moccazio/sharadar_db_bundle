@@ -18,7 +18,6 @@ from zipline.assets.asset_db_schema import (
 from zipline.utils.memoize import lazyval
 
 from singleton_decorator import singleton
-from functools import lru_cache
 
 from sqlalchemy import text
 
@@ -141,7 +140,6 @@ class SQLiteAssetFinder(AssetFinder):
         return pd.DataFrame(result).set_index('sid').reindex(sids).T.values.astype('float64')
 
     # @cached
-    @lru_cache(maxsize=None)
     def get_fundamentals(self, sids, field_name, as_of_date=None, n=1):
         """
         n=1 is the most recent quarter or last ttm, n=2 indicate the previous quarter or ttm and so on...
@@ -157,7 +155,6 @@ class SQLiteAssetFinder(AssetFinder):
         return pd.DataFrame(result).set_index('sid').reindex(sids).T.values.astype('float64')
 
     # @cached
-    @lru_cache(maxsize=None)
     def get_fundamentals_df_window_length(self, sids, field_name, as_of_date=None, window_length=1):
         """
         it returns an array of this form:
@@ -187,7 +184,6 @@ class SQLiteAssetFinder(AssetFinder):
         return df.values.astype('float64')
 
     # @cached
-    @lru_cache(maxsize=None)
     def get_fundamentals_ttm(self, sids, field_name, as_of_date=None, k=1):
         """
         k=1 is the sum of the last twelve months, k=2 is the sum of the previous twelve months and so on...
@@ -199,7 +195,6 @@ class SQLiteAssetFinder(AssetFinder):
         return pd.DataFrame(result).set_index('sid').reindex(sids).T.values.astype('float64')
 
     # @cached
-    @lru_cache(maxsize=None)
     def get_info(self, sids, field_name, as_of_date=None):
         """
         Unlike get_fundamentals(.), it use the string 'NA' for unknown values, 
@@ -211,7 +206,6 @@ class SQLiteAssetFinder(AssetFinder):
         return pd.DataFrame(result).set_index('sid').reindex(sids, fill_value='NA').T.values
 
     # @cached
-    @lru_cache(maxsize=None)
     def get_daily_metrics(self, sids, field_name, as_of_date=pd.Timestamp.today(), n=1, calendar=get_calendar('XNYS')):
         assert n > 0
         count = -n + 1
@@ -240,7 +234,6 @@ class SQLiteAssetFinder(AssetFinder):
     def last_available_daily_metrics_dt(self):
         return self.last_available_dt('marketcap')
 
-    @lru_cache(maxsize=None)
     def last_available_dt(self, field):
         sql = "SELECT MAX(start_date) FROM equity_supplementary_mappings WHERE field = '%s';" % field
         with self.engine.connect() as conn:
