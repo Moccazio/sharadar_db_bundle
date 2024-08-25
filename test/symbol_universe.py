@@ -21,7 +21,7 @@ def universe():
 
 spe = make_pipeline_engine()
 
-date = pd.to_datetime('2020-09-28', utc=True)
+date = pd.to_datetime('2020-09-28', utc=False)
 
 
 pipe = Pipeline(columns={
