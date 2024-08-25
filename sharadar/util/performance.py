@@ -15,8 +15,11 @@ import time
 import gc
 import psutil
 import datetime
-from sharadar.pipeline.engine import symbol, symbols, returns
+from sharadar.pipeline.engine import symbol, symbols, returns, load_sharadar_bundle
 import warnings
+
+bundle = load_sharadar_bundle()
+last_date = bundle.equity_daily_bar_reader.last_available_dt
 
 DATETIME_FMT = '%Y-%m-%d_%H%M'
 
@@ -83,7 +86,7 @@ def create_report(perf, filename, now, doc=None, duration=None, param=None, info
     perf_stats_series = pf.timeseries.perf_stats(rets, positions=positions, transactions=transactions)
 
     log.info("perf_stats benchmark")
-    benchmark_rets = returns([symbol('SPY')], rets.index[0], rets.index[-1])
+    benchmark_rets = returns([symbol('SPY', as_of_date=last_date)], rets.index[0], rets.index[-1])
     benchmark_perf_stats = pf.timeseries.perf_stats(benchmark_rets)
 
     perf_stats_df = pd.DataFrame(perf_stats_series, columns=['Backtest'])
