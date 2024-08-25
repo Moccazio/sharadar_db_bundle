@@ -14,8 +14,8 @@ bundle.asset_finder.retrieve_equities([199059, 199623])
 
 spe = make_pipeline_engine()
 
-pipe_start = pd.to_datetime('2020-02-03', utc=True)
-pipe_end = pd.to_datetime('2020-02-07', utc=True)
+pipe_start = pd.to_datetime('2020-02-03', utc=False)
+pipe_end = pd.to_datetime('2020-02-07', utc=False)
 
 universe = StaticAssets(symbols(['IBM', 'F', 'AAPL']))
 
