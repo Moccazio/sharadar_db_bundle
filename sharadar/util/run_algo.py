@@ -131,7 +131,7 @@ def _run(handle_data,
         log.info("Backtest from %s to %s." % (start.date(), end.date()))
 
     if benchmark_symbol:
-        benchmark = symbol(benchmark_symbol)
+        benchmark = symbol(benchmark_symbol, as_of_date=bundle_data.equity_daily_bar_reader.last_available_dt)
         benchmark_sid = benchmark.sid
         benchmark_returns = returns([benchmark], start, end)
     else:
