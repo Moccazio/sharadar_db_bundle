@@ -61,8 +61,10 @@ from sharadar.pipeline.factors import (
     EV,
     Fundamentals
 )
-from sharadar.pipeline.engine import symbol, symbols, make_pipeline_engine
+from sharadar.pipeline.engine import symbol, symbols, make_pipeline_engine, load_sharadar_bundle
 from zipline.pipeline.filters import StaticAssets
+
+bundle = load_sharadar_bundle()
 
 pipe = Pipeline(columns={
     'mkt_cap': MarketCap(),
@@ -70,7 +72,7 @@ pipe = Pipeline(columns={
     'debt': Fundamentals(field='debtusd_arq'),
     'cash': Fundamentals(field='cashnequsd_arq')
 },
-screen = StaticAssets(symbols(['IBM', 'F', 'AAPL']))
+screen = StaticAssets(symbols(['IBM', 'F', 'AAPL'], as_of_date=bundle.equity_daily_bar_reader.last_available_dt))
 )
 spe = make_pipeline_engine()
 
