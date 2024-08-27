@@ -7,6 +7,7 @@ import time
 import datetime
 from zipline.pipeline.factors import Latest
 from sharadar.pipeline.factors import MarketCap, EV, Fundamentals, FundamentalsTTM, Previous, StdDev, Beta, Sector
+from sharadar.pipeline.arbitrage_pricing import InflationRateBeta, PurchaseManagerIndexBeta
 import numpy as np
 from zipline.pipeline.factors import Returns, DailyReturns
 from zipline.pipeline.factors import AverageDollarVolume
@@ -171,6 +172,9 @@ ret_12_1 = Momentum_1M_12M()
 
 res_var = Beta(window_length=252, standardize=True).residual_var
 
+pmi_beta = PurchaseManagerIndexBeta(window_length=252)
+infr_beta = InflationRateBeta(window_length=252)
+
 pipe_columns = columns = {
     'returns': Returns(window_length=21),
 
@@ -222,16 +226,21 @@ pipe_columns = columns = {
     'eqnpo_me': eqnpo_me,
     'ocf_me': ocf_me,
 
+    # arbitage_pricing
+    'pmi_beta':pmi_beta,
+    'infr_beta':infr_beta,
+
     'sector': Sector()
 }
 
 if __name__ == '__main__':
     engine = make_pipeline_engine()
-    date = pd.Timestamp('2021-05-20')
+    date = pd.Timestamp('2024-08-01')
+    bundle = load_sharadar_bundle()
+    last_date = bundle.equity_daily_bar_reader.last_available_dt
 
     pipe = Pipeline(pipe_columns,
-                    screen=StaticAssets(symbols(['IBM', 'F', 'AAPL']))
-                    )
+                    screen=StaticAssets(symbols(['NVDA', 'MSFT', 'AAPL'], as_of_date=last_date)))
 
     stocks = engine.run_pipeline(pipe, date, hooks=[])
     print(stocks.T)
