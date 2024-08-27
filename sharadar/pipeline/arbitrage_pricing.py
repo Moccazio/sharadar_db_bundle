@@ -4,6 +4,9 @@ from sharadar.pipeline.factors import beta_residual
 from sharadar.util.numpy_invalid_values_util import nanlog, nanlog1p
 from zipline.pipeline import CustomFactor
 from zipline.pipeline.data import USEquityPricing
+from sharadar.pipeline.engine import load_sharadar_bundle
+bundle = load_sharadar_bundle()
+last_date = bundle.equity_daily_bar_reader.last_available_dt
 
 
 class Closes(CustomFactor):
@@ -24,7 +27,7 @@ def prices_by_sid(assets, close, sid):
 
 
 class TBillBeta(CustomFactor):
-    inputs = [USEquityPricing.close, Closes()[symbol('TR3M')]]
+    inputs = [USEquityPricing.close, Closes()[symbol('TR3M', as_of_date=last_date)]]
     window_safe = True
     window_length = 252
 
@@ -106,7 +109,7 @@ class PurchaseManagerIndexBeta(CustomFactor):
 
 
 class InterestRate(CustomFactor):
-    inputs = [Closes()[symbol('TR1Y')]]
+    inputs = [Closes()[symbol('TR1Y', as_of_date=last_date)]]
     window_safe = True
     window_length = 1
 
