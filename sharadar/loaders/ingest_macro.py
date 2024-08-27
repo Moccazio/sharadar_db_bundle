@@ -11,14 +11,12 @@ from sharadar.util.nasdaqdatalink_util import last_available_date
 import pandas_datareader.data as pdr
 import sharadar.loaders.constant as k
 import random
-from functools import lru_cache
 
 # To clean the database if necessary use:
 # delete from prices where sid in (10003,   10006,  10012,  10024,  10036,  10060,  10084,  10120,  10240, 10400, 10410, 10420, 10430, 10440, 10450)
 
 nasdaqdatalink.ApiConfig.api_key = env["NASDAQ_API_KEY"]
 
-@lru_cache(maxsize=None)
 def trading_date(date, cal):
     """
     Given a date, return the same date if a trading session or the next valid one
@@ -33,7 +31,7 @@ def trading_date(date, cal):
         date = date.tz_localize(None).normalize()
     return date
 
-@lru_cache(maxsize=None)
+
 def _add_macro_def(df, sid, start_date, end_date, ticker, asset_name):
     # The date on which to close any positions in this asset.
     auto_close_date = end_date + pd.Timedelta(days=1)
@@ -47,7 +45,6 @@ def _add_macro_def(df, sid, start_date, end_date, ticker, asset_name):
                    auto_close_date,
                    exchange)
 
-@lru_cache(maxsize=None)
 def _to_prices_df(df, sid):
     df.index = df.index.tz_localize(None)
     df['sid'] = sid
@@ -55,7 +52,6 @@ def _to_prices_df(df, sid):
     df = _append_ohlc(df)
     return df
 
-@lru_cache(maxsize=None)
 def _append_ohlc(df):
     df.index.names = ['date', 'sid']
     df.columns = ['open']
@@ -63,11 +59,9 @@ def _append_ohlc(df):
     df['volume'] = 100.0
     return df
 
-@lru_cache(maxsize=None)
 def utc(s):
     return pd.to_datetime(s, utc=False)
 
-@lru_cache(maxsize=None)
 def create_macro_equities_df():
     # TR1M, TR2M and TR30Y excluded because of too many missing data
     end_date = utc(last_available_date())
@@ -92,7 +86,6 @@ def create_macro_equities_df():
     _add_macro_def(df, 10450, utc('1990-01-02'), end_date, 'RATEINF', 'US Inflation Rates YoY')
     return df
 
-@lru_cache(maxsize=None)
 def create_macro_prices_df(start_str: str, calendar=get_calendar('XNYS')):
     start = pd.to_datetime(start_str)
     start = trading_date(start, calendar)
@@ -158,11 +151,10 @@ def create_macro_prices_df(start_str: str, calendar=get_calendar('XNYS')):
     # not work
     # ConnectionError: ERR#0015: error 403, try again later
     # 
-    pmi_df = investpy_ism_pmi().reindex(pd.date_range(start=m_start, end=end), method='ffill').loc[pd.date_range(start, end)]
+    pmi_df = investpy_ism_pmi().reindex(pd.date_range(start=m_start, end=end), method='ffill').loc[pd.date_range(start, end)].ffill()
     prices = pd.concat([prices, _to_prices_df(pmi_df, 10430)])
     return prices.sort_index()
 
-@lru_cache(maxsize=None)
 def investpy_ism_pmi():
     import random
     import requests
