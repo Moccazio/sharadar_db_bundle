@@ -14,7 +14,6 @@ NASDAQ_DATALINK_URL = (
     'https://data.nasdaq.com/api/v3/datatables/'
 )
 
-DATA_START_DATE = "2000-01-01" # aviod error with zipline-reloaded 
 
 def download_with_progress(url, chunk_size, **progress_kwargs):
     """
@@ -52,14 +51,8 @@ def download_with_progress(url, chunk_size, **progress_kwargs):
 def format_metadata_url(api_key, table_name):
     """ Build the query URL for Quandl Prices metadata.
     """
-    if table_name == "SHARADAR/SEP":
-        query_params = [("date.gte", DATA_START_DATE), ('api_key', api_key), ('qopts.export', 'true')]
-    elif table_name == "SHARADAR/SFP":
-        query_params = [("date.gte", DATA_START_DATE), ('api_key', api_key), ('qopts.export', 'true')]
-    elif table_name == "SHARADAR/DAILY":
-        query_params = [("date.gte", DATA_START_DATE), ('api_key', api_key), ('qopts.export', 'true')]
-    elif table_name == "SHARADAR/SF1":
-        query_params = [("calendardate.gte", DATA_START_DATE), ('api_key', api_key), ('qopts.export', 'true')]
+    query_params = [('api_key', api_key), ('qopts.export', 'true')]
+
     return (
             NASDAQ_DATALINK_URL + table_name + ".csv?" + urlencode(query_params)
     )
@@ -92,17 +85,18 @@ def fetch_entire_table(api_key, table_name, index_col=None, parse_dates=False, r
             raw_file = download_with_progress(
                 table_url,
                 chunk_size=ONE_MEGABYTE,
-                label="Downloading data from nasdaqdatalink table " + table_name
+                label="Downloading data from Quandl table " + table_name
             )
 
             log.info("Parsing data from nasdaqdatalink table %s." % table_name)
             return load_data_table(raw_file, index_col=index_col, parse_dates=parse_dates)
 
         except Exception:
-            log.exception("Exception raised reading nasdaqdatalink data. Retrying.")
+            log.exception("Exception raised reading Quandl data. Retrying.")
 
     else:
         raise ValueError("Failed to download data from '%s' after %d attempts." % (source_url, retries))
+
 
 def fetch_table_by_date(api_key, table_name, start, end=None, index_col=None):
     """
@@ -132,4 +126,3 @@ def fetch_sf1_table_date(api_key, start, end=None):
 
 def last_available_date():
     return nasdaqdatalink.get_table('SHARADAR/TICKERS', ticker='SPY')['lastpricedate'][0].strftime('%Y-%m-%d')
-
