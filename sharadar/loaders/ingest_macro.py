@@ -244,7 +244,7 @@ if __name__ == "__main__":
         sys.exit(os.EX_USAGE)
 
 
-    start = '2000-01-03' if len(sys.argv) == 1 else sys.argv[1]
+    start = '1997-12-31' if len(sys.argv) == 1 else sys.argv[1]
     calendar = get_calendar('XNYS')
     start = trading_date(start, calendar)
 
