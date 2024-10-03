@@ -112,7 +112,6 @@ dependencies:
       - opencv-python-headless
       - patsy
       - pymdptoolbox
-      - PyPortfolioOpt
       - pyparsing
       - pyluach
       - Pygments
@@ -123,3 +122,4 @@ dependencies:
       - toolz
       - threadpoolctl
       - zipline-reloaded
+
