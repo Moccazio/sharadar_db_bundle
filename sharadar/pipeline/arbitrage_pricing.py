@@ -107,15 +107,22 @@ class PurchaseManagerIndexBeta(CustomFactor):
 
         out[:] = beta
 
-
-class InterestRate(CustomFactor):
+class InterestRate_backup(CustomFactor):
     inputs = [Closes()[symbol('TR1Y', as_of_date=last_date)]]
     window_safe = True
     window_length = 1
-
     def compute(self, today, assets, out, int_rate):
         out[:] = int_rate[-self.window_length]
 
+class InterestRate(CustomFactor):
+    inputs = [USEquityPricing.close]
+    window_safe = True
+    window_length = 1
+    def compute(self, today, assets, out, prices):
+        # 10450	US Inflation Rates YoY
+        idx = np.where((assets ==  10012) == True)[0][0]
+        int_rate = np.reshape(prices[:, idx], (-1, 1))
+        out[:] = int_rate[-self.window_length]
 
 class InflationRate(CustomFactor):
     inputs = [USEquityPricing.close]
