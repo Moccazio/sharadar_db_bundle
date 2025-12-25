@@ -98,7 +98,7 @@ def get_data(sharadar_metadata_df, related_tickers, start=None, end=None):
     log.info(f"Processing {len(df)} price rows...")
     log.info("Adding SIDs to all stocks (Vectorized)...")
     
-    # ⚡️ Vectorized Merge Lookup
+    # Vectorized Merge Lookup
     meta_reset = sharadar_metadata_df.reset_index()
     if 'permaticker' in meta_reset.columns:
         mapping = meta_reset[['ticker', 'permaticker']].copy()
@@ -138,7 +138,7 @@ def create_equities_df(df, tickers, sessions, sharadar_metadata_df, show_progres
     equities_df = pd.DataFrame(index=subset['permaticker'])
     equities_df.index.name = 'sid'
     
-    # ⚡️ FIX: Use .values to ignore index alignment mismatch (Ticker vs SID)
+    # FIX: Use .values to ignore index alignment mismatch (Ticker vs SID)
     equities_df['symbol'] = subset.index.values
     equities_df['ticker'] = subset.index.values
     equities_df['asset_name'] = subset['name'].values
