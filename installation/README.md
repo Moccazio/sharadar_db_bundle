@@ -1,39 +1,45 @@
-# Installation instructions
+**Installation Instructions**
 
-Using [mamba](https://github.com/mamba-org/mamba) in [conda environments](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) based on the [Miniconda](https://docs.conda.io/en/latest/miniconda.html) distribution and the provided `py310.yml` environment files,
+These steps will guide you through setting up the environment using [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
 
-   run:
-   - ```bash
-     conda create -n py310 python=3.10
-     mamba env update -n py310 -f py310.yml
-     conda activate py310
-     ```
+## **1\. Install Miniconda**
 
+The notebooks rely on a single virtual environment based on **Miniconda3**. You must install this first.
 
-### Install miniconda
+* **General Instructions:** For Windows, Intel Macs, or Linux, find detailed instructions [here](https://conda.io/projects/conda/en/latest/user-guide/install/index.html).  
+* **macOS (Apple Silicon / M1 or later):** Open your Terminal and run the following commands:  
+  Bash  
+  mkdir \-p \~/miniconda3  
+  curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh \-o \~/miniconda3/miniconda.sh  
+  bash \~/miniconda3/miniconda.sh \-b \-u \-p \~/miniconda3  
+  rm \-rf \~/miniconda3/miniconda.sh
 
-The notebooks rely on a single virtual environment based on [miniconda3](https://docs.conda.io/en/latest/miniconda.html) that you need to install first. 
+### **Initialize Shell**
 
-You can find detailed instructions for various operating systems [here](https://conda.io/projects/conda/en/latest/user-guide/install/index.html).
+After installing, initialize Miniconda for your specific shell (bash or zsh):
 
-If you run on macOS M1 or later open Terminal and run:
-   - ```bash
-     mkdir -p ~/miniconda3
-     curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh -o ~/miniconda3/miniconda.sh
-     bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
-     rm -rf ~/miniconda3/miniconda.sh
-     ```
+Bash
 
-After installing, initialize your newly-installed Miniconda. The following commands initialize for bash and zsh shells:
-- ```bash
-  ~/miniconda3/bin/conda init bash
-  ~/miniconda3/bin/conda init zsh
-  ```
-  
-### Install mamba
+\~/miniconda3/bin/conda init bash  
+\~/miniconda3/bin/conda init zsh
 
-[conda] is the package manager provided by the [Anaconda](https://www.anaconda.com/) python distribution. Unfortunately, it is currently [not in very good shape](https://github.com/conda/conda/issues/9707). Instead, we'll use the more recent and much faster [mamba](https://github.com/mamba-org/mamba) package manager to install packages. You can install it using:
-```python
-conda install -n base -c conda-forge mamba
-```
+**Note:** You may need to restart your terminal for these changes to take effect.
+
+## ---
+
+**2\. Create and Configure the Environment**
+
+Using the provided py310.yml environment file, run the following commands to create the environment, install dependencies, and activate it.
+
+Bash
+
+\# 1\. Create the base Python 3.10 environment  
+conda create \-n py310 python=3.10
+
+\# 2\. Update the environment using the yaml file  
+\# (Note: This might take a few minutes as conda solves the environment)  
+conda env update \-n py310 \-f py310.yml
+
+\# 3\. Activate the environment  
+conda activate py310
 
