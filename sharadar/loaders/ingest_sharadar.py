@@ -266,6 +266,9 @@ def _ingest(start, calendar=get_calendar('XNYS'), output_dir=get_data_dir(), uni
         screen = base_universe(context())
         update_universe(TRADABLE_STOCKS_US, screen)
     # Sanity Check
+    #if sanity_check:
+    #    if asset_db_writer.check_sanity():
+    #        log.info("Sanity check successful!")
     Path(os.path.join(output_dir, "ok")).touch()
     log.info("Ingest finished Successfully!")
 
