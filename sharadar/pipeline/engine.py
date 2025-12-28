@@ -9,7 +9,7 @@ import pandas as pd
 from sharadar.data.sql_lite_assets import SQLiteAssetFinder
 from sharadar.data.sql_lite_daily_pricing import SQLiteDailyBarReader
 from sharadar.util.logger import log
-from sharadar.util.output_dir import SHARADAR_BUNDLE_NAME, SHARADAR_BUNDLE_DIR, get_cache_dir, clear_cache_dir
+from sharadar.util.output_dir import SHARADAR_BUNDLE_NAME, SHARADAR_BUNDLE_DIR, get_cache_dir, clear_cache_dir, smart_cleanup_cache
 from toolz import groupby
 from zipline.data.adjustments import SQLiteAdjustmentReader
 from zipline.data.bundles.core import BundleData, asset_db_path, adjustment_db_path
@@ -52,7 +52,7 @@ class BundlePipelineEngine(SimplePipelineEngine):
 
         return root_mask
 
-    def run_pipeline(self, pipeline, start_date, end_date=None, chunksize=120, hooks=None):
+    def run_pipeline(self, pipeline, start_date, end_date=None, chunksize=200, hooks=None):
         if end_date is None:
             end_date = start_date
 
@@ -426,7 +426,7 @@ def sids(sids):
 def make_pipeline_engine(bundle=None, start=None, end=None, live=False):
     """Creates a pipeline engine for the dates in (start, end).
     Using this allows usage very similar to run_pipeline in Quantopian's env."""
-    clear_cache_dir() # clear cache directory
+    smart_cleanup_cache(limit_gb=30, target_gb=20) # smart cache management
     if bundle is None:
         bundle = load_sharadar_bundle()
     if start is None:
