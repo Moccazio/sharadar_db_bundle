@@ -52,7 +52,7 @@ class BundlePipelineEngine(SimplePipelineEngine):
 
         return root_mask
 
-    def run_pipeline(self, pipeline, start_date, end_date=None, chunksize=200, hooks=None):
+    def run_pipeline(self, pipeline, start_date, end_date=None, chunksize=120, hooks=None):
         if end_date is None:
             end_date = start_date
 
