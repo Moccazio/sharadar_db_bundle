@@ -154,38 +154,54 @@ def create_equities_df(df, tickers, sessions, sharadar_metadata_df, show_progres
 def align_pricing_data(df, equities_df, sessions):
     """
     Aligns the pricing dataframe to the trading calendar in a vectorized manner.
-    1. Creates a target MultiIndex of all valid trading days for each SID.
-    2. Reindexes the dataframe to this target.
-    3. Forward-fills prices and fills volume with 0 for the gaps.
+    
+    1. Generates valid date ranges for every asset using Numpy (Faster than Index.append).
+    2. Constructs a proper MultiIndex.
+    3. Reindexes and Forward-Fills.
     """
     log.info("Aligning pricing data to calendar (Vectorized Sync)...")
-    # Ensure sessions is a DatetimeIndex
-    sessions = pd.DatetimeIndex(sessions)
-    # 1. Build the Target Index
-    target_indices = []
-    # Iterating metadata is fast (14k rows vs millions)
+    # Ensure sessions is a DatetimeIndex and sorted
+    sessions = pd.DatetimeIndex(sessions).sort_values()
+    # Lists to collect all valid timestamps and SIDs
+    all_dates = []
+    all_sids = []
+    # 1. Build Arrays
+    # Iterating 30k metadata rows is fast; building millions of Index objects is slow.
+    # We build numpy arrays instead.
     for sid, row in equities_df.iterrows():
         start_date = row['start_date']
         end_date = row['end_date']
-        # Get valid sessions for this specific asset lifespan
-        asset_sessions = sessions[(sessions >= start_date) & (sessions <= end_date)]
-        # Create product index: [dates] x [sid]
-        idx = pd.MultiIndex.from_product([asset_sessions, [sid]], names=['date', 'sid'])
-        target_indices.append(idx)
-
-    # Combine into one massive MultiIndex
-    full_target_index = pd.Index([]).append(target_indices)
-    # 2. Reindex the Pricing Data (Inserts NaNs for missing days)
+        # Slice sessions to asset lifespan
+        # Searchsorted is faster than boolean indexing for ranges
+        start_idx = sessions.searchsorted(start_date)
+        end_idx = sessions.searchsorted(end_date, side='right')
+        asset_dates = sessions[start_idx:end_idx].values
+        if len(asset_dates) > 0:
+            all_dates.append(asset_dates)
+            all_sids.append(np.full(len(asset_dates), sid))
+    # 2. Concatenate and Create MultiIndex
+    if not all_dates:
+        log.warning("No valid trading dates found during alignment!")
+        return df
+    flat_dates = np.concatenate(all_dates)
+    flat_sids = np.concatenate(all_sids)
+    full_target_index = pd.MultiIndex.from_arrays(
+        [flat_dates, flat_sids], 
+        names=['date', 'sid']
+    )
+    log.info(f"Target index constructed: {len(full_target_index)} rows.")
+    # 3. Reindex the Pricing Data
+    # This aligns the sparse data to the full calendar, inserting NaNs for gaps
     df_aligned = df.reindex(full_target_index)
     df_aligned = df_aligned.sort_index()
-    # 3. Fill Missing Data
+    # 4. Fill Missing Data
     if 'volume' in df_aligned.columns:
         df_aligned['volume'] = df_aligned['volume'].fillna(0)
-    # Forward Fill Prices by Group (prevents bleeding between SIDs)
+    # Forward Fill Prices
     cols_to_ffill = [c for c in df_aligned.columns if c != 'volume']
-    # Groupby SID and forward fill
+    # Groupby level='sid' works now because full_target_index is strictly a MultiIndex
     df_aligned[cols_to_ffill] = df_aligned.groupby(level='sid')[cols_to_ffill].ffill()
-    # Drop rows that are still NaN (e.g. missing start data)
+    # Drop rows that are still NaN (missing start data)
     df_aligned.dropna(subset=['close'], inplace=True)
     log.info(f"Data aligned. Resulting shape: {df_aligned.shape}")
     return df_aligned
