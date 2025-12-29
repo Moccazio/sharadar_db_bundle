@@ -5,8 +5,7 @@ from contextlib import closing
 import click
 import numpy as np
 import pandas as pd
-#from exchange_calendars import get_calendar
-from zipline.utils.calendar_utils import get_calendar # zipline-reloaded
+from exchange_calendars import get_calendar
 
 from sharadar.util.logger import log
 from sharadar.util.output_dir import get_data_dir
@@ -251,7 +250,7 @@ class SQLiteDailyBarReader(SessionBarReader):
         res = self._query(sql)
         if len(res) == 0:
             raise ValueError("No trading calendar defined.")
-        return get_calendar(res[0][0])
+        return get_calendar(res[0][0], start=pd.Timestamp('2000-01-01 00:00:00'))
 
     @property
     def first_trading_day(self):
@@ -419,4 +418,3 @@ class SQLiteDailyAdjustmentWriter(SQLiteAdjustmentWriter):
             'effective_date': input_dates[valid_ratio_mask],
             'ratio': ratio[valid_ratio_mask],
         })
-
