@@ -3,8 +3,7 @@ from datetime import timedelta
 
 import numpy as np
 import pandas as pd
-#from exchange_calendars import get_calendar
-from zipline.utils.calendar_utils import get_calendar # zipline-reloaded
+from exchange_calendars import get_calendar
 from pandas.tseries.offsets import DateOffset
 from sharadar.util.logger import log
 from toolz import first
@@ -16,35 +15,8 @@ from zipline.assets.asset_db_schema import (
     futures_contracts as futures_contracts_table,
 )
 from zipline.utils.memoize import lazyval
-
-from functools import lru_cache
-
 from sqlalchemy import text
 
-import random
-import time
-import sqlite3
-import functools
-import sqlalchemy
-from sqlalchemy.exc import OperationalError
-
-# Assuming _check_field, Sector, and Exchange are imported at the top of your file
-# from sharadar.pipeline.factors import Sector, Exchange  
-# Cache static expected lists if they don't change often
-
-EXPECTED_CATEGORIES = [
-    'ADR Common Stock', 'ADR Common Stock Primary Class', 'ADR Common Stock Secondary Class',
-    'ADR Common Stock Warrant', 'ADR Preferred Stock', 'ADR Stock Warrant', 'CEF', 'CEF Preferred',
-    'CEF Warrant', 'Canadian Common Stock', 'Canadian Common Stock Primary Class',
-    'Canadian Common Stock Secondary Class', 'Canadian Common Stock Warrant', 'Canadian Preferred Stock',
-    'Canadian Stock Warrant', 'Domestic Common Stock', 'Domestic Common Stock Primary Class',
-    'Domestic Common Stock Secondary Class', 'Domestic Common Stock Warrant', 'Domestic Preferred Stock',
-    'Domestic Stock Warrant', 'ETD', 'ETF', 'ETMF', 'ETN', 'IDX', 'UNIT'
-    ]
-EXPECTED_SECTORS = ['Basic Materials', 'Communication Services', 'Consumer Cyclical', 'Consumer Defensive', 'Energy',
-                      'Financial Services', 'Healthcare', 'Industrials', 'Real Estate', 'Technology', 'Utilities'] #= Sector().categories.copy()
-EXPECTED_EXCHANGES = ['BATS', 'INDEX', 'NASDAQ', 'NYSE', 'NYSEARCA', 'NYSEMKT', 'OTC'] # Exchange().categories.copy()
-EXPECTED_EXCHANGES.insert(0, 'AMEX')
 
 class SQLiteAssetFinder(AssetFinder):
 
@@ -151,7 +123,10 @@ class SQLiteAssetFinder(AssetFinder):
                      )
             return []
         # shape: (windows lenghts=1, num of assets)
-        return pd.DataFrame(result).set_index('sid').reindex(sids).T.values.astype('float64')
+        df = pd.DataFrame(result).set_index('sid').reindex(sids).T
+        values = df.replace('None', np.nan).values
+        # shape: (num of assets, windows lenghts=1)
+        return values.astype('float64')
 
     # @cached
     def get_fundamentals_df_window_length(self, sids, field_name, as_of_date=None, window_length=1):
@@ -205,7 +180,7 @@ class SQLiteAssetFinder(AssetFinder):
         return pd.DataFrame(result).set_index('sid').reindex(sids, fill_value='NA').T.values
 
     # @cached
-    def get_daily_metrics(self, sids, field_name, as_of_date=pd.Timestamp.today(), n=1, calendar=get_calendar('XNYS')):
+    def get_daily_metrics(self, sids, field_name, as_of_date=pd.Timestamp.today(), n=1, calendar=get_calendar('XNYS', start=pd.Timestamp('2000-01-01 00:00:00'))):
         assert n > 0
         count = -n + 1
         if count == 0:
@@ -240,6 +215,7 @@ class SQLiteAssetFinder(AssetFinder):
         if len(res) == 0:
             return pd.NaT
         return pd.Timestamp(res[0][0])
+
 
 class SQLiteAssetDBWriter(AssetDBWriter):
 
@@ -326,72 +302,87 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         )
         return insert_statement
 
-    #def _write_df_to_table(self, tbl, df, txn, chunk_size=None, idx=True, idx_label=None):
-    #    index_label = (
-    #        idx_label
-    #        if idx_label is not None else
-    #        first(tbl.primary_key.columns).name
-    #    )
-    #    cmd = self.insert_statement(df, tbl.name, idx, index_label)
-        #
-    #    for index, row in df.iterrows():
-    #        values = row.values
-    #        if idx:
-    #            values = np.insert(values, 0, str(index), axis=0)
-            #
-    #        params = dict(zip([str(x) for x in range(0, len(values))], values.flatten()))
-    #        with self.engine.connect() as conn:
-    #            conn.execute(text(cmd), params)
-    #            conn.commit()
-    
     def _write_df_to_table(self, tbl, df, txn, chunk_size=None, idx=True, idx_label=None):
-        engine = txn.connection
         index_label = (
             idx_label
             if idx_label is not None else
             first(tbl.primary_key.columns).name
         )
         cmd = self.insert_statement(df, tbl.name, idx, index_label)
-        #
+
         for index, row in df.iterrows():
             values = row.values
             if idx:
                 values = np.insert(values, 0, str(index), axis=0)
-            engine.execute(cmd, tuple(values))
-                
+
+            params = dict(zip([str(x) for x in range(0, len(values))], values.flatten()))
+            with self.engine.connect() as conn:
+                conn.execute(text(cmd), params)
+                conn.commit()
+
     def check_sanity(self):
         """
         Check if there were changes in some metadata
         """
-        checks = [
-            ('category', EXPECTED_CATEGORIES),
-            ('sector', EXPECTED_SECTORS),
-            ('exchange', EXPECTED_EXCHANGES)
+
+        sane = True
+        field = 'category'
+
+        expected = [
+            'ADR Common Stock',
+            'ADR Common Stock Primary Class',
+            'ADR Common Stock Secondary Class',
+            'ADR Common Stock Warrant',
+            'ADR Preferred Stock',
+            'ADR Stock Warrant',
+            'CEF',
+            'CEF Preferred',
+            'CEF Warrant',
+            'Canadian Common Stock',
+            'Canadian Common Stock Primary Class',
+            'Canadian Common Stock Secondary Class',
+            'Canadian Common Stock Warrant',
+            'Canadian Preferred Stock',
+            'Canadian Stock Warrant',
+            'Domestic Common Stock',
+            'Domestic Common Stock Primary Class',
+            'Domestic Common Stock Secondary Class',
+            'Domestic Common Stock Warrant',
+            'Domestic Preferred Stock',
+            'Domestic Stock Warrant',
+            'ETD',
+            'ETF',
+            'ETMF',
+            'ETN',
+            'IDX',
+            'UNIT'
         ]
 
-        for field, expected in checks:
-            if not self._check_field(field, expected):
-                return False  # Early termination on first failure
-        return True
+        if not self._check_field(field, expected):
+            sane = False
 
+        field = 'sector'
+        from sharadar.pipeline.factors import Sector
+        expected = Sector().categories.copy()
+        if not self._check_field(field, expected):
+            sane = False
+
+        field = 'exchange'
+        from sharadar.pipeline.factors import Exchange
+        expected = Exchange().categories.copy()
+        if not self._check_field(field, expected):
+            sane = False
+
+        return sane
 
     def _check_field(self, field, expected):
-        retries = 10  # Number of retries
-        wait = 1  # Wait 1 second between retries
-        for attempt in range(retries):
-            try:
-                # Setting timeout for the SQLite connection
-                engine = self.engine.execution_options(isolation_level="AUTOCOMMIT", connect_args={'timeout': 30})
-                sql = "SELECT DISTINCT(value) as r FROM equity_supplementary_mappings WHERE field = '%s' ORDER BY r;" % field
-                with engine.connect() as conn:
-                    ret = [x[0] for x in conn.execute(text(sql)).fetchall()]
-                ok = np.array_equal(ret, expected)
-                return ok
-            except sqlalchemy.exc.OperationalError as e:
-                if 'locked' in str(e):
-                    print(f"Attempt {attempt + 1} of {retries}: Database is locked, retrying in {wait} seconds...")
-                    time.sleep(wait)
-                    wait *= 2  # Exponential backoff
-                else:
-                    raise  # Re-raise the exception if it's not a lock issue
-        return False  # Return False if all retries failed
+        sql = "SELECT DISTINCT(value) as r FROM equity_supplementary_mappings WHERE field = '%s' ORDER BY r;" % field
+        with self.engine.connect() as conn:
+            ret = [x[0] for x in conn.execute(text(sql)).fetchall()]
+        ok = np.array_equal(ret, expected)
+        if not ok:
+            from sharadar.util.logger import log
+            log.error("Field '%s' changed!\nActual:\n  %s\nExpected:\n  %s" % (field, ret, expected))
+            return False
+        else:
+            return True
