@@ -38,8 +38,6 @@ def fast_connect(*args, **kwargs):
         # NORMAL Sync: Trusts the OS buffer (Removes disk latency)
         conn.execute("PRAGMA synchronous = NORMAL;")
         # CACHE UPDATE: 4GB RAM Cache (-4000000 pages)
-        # if 4GB is too much, reduce to -2000000 (2GB) or -1000000 (1GB)
-        # Allows SQLite to keep huge chunks of the DB in RAM while processing.
         conn.execute("PRAGMA cache_size = -4000000;") 
         # Temp Store: Operations happen in RAM
         conn.execute("PRAGMA temp_store = MEMORY;")
@@ -52,6 +50,10 @@ sqlite3.connect = fast_connect
 
 # Global API Key
 nasdaqdatalink.ApiConfig.api_key = env.get("NASDAQ_API_KEY")
+
+# ==========================================
+# DATA PROCESSING FUNCTIONS
+# ==========================================
 
 def process_data_table(df):
     """ Vectorized cleanup of price data. """
@@ -119,36 +121,74 @@ def get_data(sharadar_metadata_df, related_tickers, start=None, end=None):
     # Return sorted
     return df.sort_index()
 
-def create_equities_df(df, tickers, sessions, sharadar_metadata_df, show_progress):
+def create_equities_df(df, tickers, sessions, sharadar_metadata_df, show_progress=False):
     """
-    Fixed & Optimized: Vectorized metadata creation ensuring correct index alignment.
+    Vectorized metadata creation.
     """
     log.info("Generating Equities Metadata (Vectorized)...")
-    # Get all SIDs present in the price data
+    # 1. Identify relevant SIDs
     present_sids = df.index.get_level_values('sid').unique()
-    # Filter metadata to only include these SIDs
-    # Note: sharadar_metadata_df is indexed by 'ticker'
+    # 2. Filter metadata for only these SIDs
     mask = sharadar_metadata_df['permaticker'].isin(present_sids)
     subset = sharadar_metadata_df[mask].copy()
-    # Create the Equities DataFrame indexed by SID (permaticker)
-    # We must reset index to access 'ticker' column, then set index to 'permaticker'
-    subset_reset = subset.reset_index() # columns: ticker, permaticker, ...
+    # 3. Create the Equities DataFrame
+    subset_reset = subset.reset_index() 
     equities_df = pd.DataFrame(index=subset_reset['permaticker'])
     equities_df.index.name = 'sid'
-    # FIX: Map data correctly using the shared index (permaticker)
+    # 4. Map columns
     equities_df['symbol'] = subset_reset['ticker'].values
-    equities_df['ticker'] = subset_reset['ticker'].values
     equities_df['asset_name'] = subset_reset['name'].values
     equities_df['start_date'] = subset_reset['firstpricedate'].values
     equities_df['end_date'] = subset_reset['lastpricedate'].values
     equities_df['first_traded'] = subset_reset['firstpricedate'].values
-    # Add one day to end_date for auto_close_date
     equities_df['auto_close_date'] = (subset_reset['lastpricedate'] + pd.Timedelta(days=1)).values
-    # Handle Exchanges
-    equities_df['exchange'] = subset_reset['exchange'].fillna('OTC').replace('None', 'OTC').values
-    # Filter for required Zipline headers
+    # 5. Handle Exchanges (Vectorized cleaning)
+    exchange_series = subset_reset['exchange'].fillna('OTC').replace('None', 'OTC')
+    exchange_series = exchange_series.replace('NYSEAERCA', 'NYSEARCA')
+    equities_df['exchange'] = exchange_series.values
+    # 6. Ensure strict Zipline column ordering
     equities_df = equities_df[METADATA_HEADERS]
+    log.info(f"Metadata generated for {len(equities_df)} assets.")
     return equities_df
+
+def align_pricing_data(df, equities_df, sessions):
+    """
+    Aligns the pricing dataframe to the trading calendar in a vectorized manner.
+    1. Creates a target MultiIndex of all valid trading days for each SID.
+    2. Reindexes the dataframe to this target.
+    3. Forward-fills prices and fills volume with 0 for the gaps.
+    """
+    log.info("Aligning pricing data to calendar (Vectorized Sync)...")
+    # Ensure sessions is a DatetimeIndex
+    sessions = pd.DatetimeIndex(sessions)
+    # 1. Build the Target Index
+    target_indices = []
+    # Iterating metadata is fast (14k rows vs millions)
+    for sid, row in equities_df.iterrows():
+        start_date = row['start_date']
+        end_date = row['end_date']
+        # Get valid sessions for this specific asset lifespan
+        asset_sessions = sessions[(sessions >= start_date) & (sessions <= end_date)]
+        # Create product index: [dates] x [sid]
+        idx = pd.MultiIndex.from_product([asset_sessions, [sid]], names=['date', 'sid'])
+        target_indices.append(idx)
+
+    # Combine into one massive MultiIndex
+    full_target_index = pd.Index([]).append(target_indices)
+    # 2. Reindex the Pricing Data (Inserts NaNs for missing days)
+    df_aligned = df.reindex(full_target_index)
+    df_aligned = df_aligned.sort_index()
+    # 3. Fill Missing Data
+    if 'volume' in df_aligned.columns:
+        df_aligned['volume'] = df_aligned['volume'].fillna(0)
+    # Forward Fill Prices by Group (prevents bleeding between SIDs)
+    cols_to_ffill = [c for c in df_aligned.columns if c != 'volume']
+    # Groupby SID and forward fill
+    df_aligned[cols_to_ffill] = df_aligned.groupby(level='sid')[cols_to_ffill].ffill()
+    # Drop rows that are still NaN (e.g. missing start data)
+    df_aligned.dropna(subset=['close'], inplace=True)
+    log.info(f"Data aligned. Resulting shape: {df_aligned.shape}")
+    return df_aligned
 
 # --- Helpers ---
 def create_dividends_df(sharadar_metadata_df, related_tickers, existing_tickers, start):
@@ -191,24 +231,32 @@ def create_metadata():
     related_tickers = ' ' + related_tickers.astype(str) + ' '
     return related_tickers, sharadar_metadata_df
 
+# ==========================================
+# MAIN INGEST LOGIC
+# ==========================================
+
 def _ingest(start, calendar=get_calendar('XNYS'), output_dir=get_data_dir(), universe=False, sanity_check=True, use_last_available_dt=True):
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(get_cache_dir(), exist_ok=True)
     log.info("Start ingesting SEP, SFP and SF1 data into %s ..." % output_dir)
     gc.collect()
+    
     start_session = trading_date(start, calendar)
     end_session = pd.Timestamp(last_available_date())
     sessions = calendar.sessions_in_range(start_session, end_session)
     prices_dbpath = os.path.join(output_dir, "prices.sqlite")
+    
     # Determine Start Fetch Date
     start_fetch_date = sessions[0].strftime('%Y-%m-%d')
     if use_last_available_dt and os.path.exists(prices_dbpath):
         try:
             start_fetch_date = SQLiteDailyBarReader(prices_dbpath).last_available_dt.strftime('%Y-%m-%d')
         except: pass
+    
     log.info("Start fetch date: %s" % start_fetch_date)
     log.info("Start loading sharadar metadata...")
     related_tickers, sharadar_metadata_df = create_metadata()
+    
     # Get Prices (Optimized)
     prices_df = get_data(sharadar_metadata_df, related_tickers, start_fetch_date)
     if not prices_df.empty:
@@ -216,40 +264,56 @@ def _ingest(start, calendar=get_calendar('XNYS'), output_dir=get_data_dir(), uni
         prices_df.sort_index(inplace=True)
     else:
         log.info("No price data retrieved.")
+    
     tickers = prices_df['ticker'].unique()
-    # Create Equities (Fixed & Optimized)
+    
+    # 1. Create Equities Metadata (Fixed & Optimized)
     equities_df = create_equities_df(prices_df, tickers, sessions, sharadar_metadata_df, show_progress=True)
+    
+    # 2. Align Data to Calendar (Vectorized Sync)
+    # This fills gaps in the data based on the exchange calendar and asset lifespan
+    if not prices_df.empty:
+        prices_df = align_pricing_data(prices_df, equities_df, sessions)
+    
     log.info("Writing Assets DB...")
     asset_dbpath = os.path.join(output_dir, ("assets-%d.sqlite" % ASSET_DB_VERSION))
     asset_db_writer = SQLiteAssetDBWriter(asset_dbpath)
     asset_db_writer.write(equities=equities_df, exchanges=EXCHANGE_DF)
+    
     log.info(f"Writing Pricing Data to {prices_dbpath}...")
     sql_daily_bar_writer = SQLiteDailyBarWriter(prices_dbpath, calendar)
     sql_daily_bar_writer.write(prices_df)
+    
     del prices_df
     gc.collect()
+    
     log.info("Creating Dividends & Splits...")
     dividends_df = create_dividends_df(sharadar_metadata_df, related_tickers, tickers, start_fetch_date)
     splits_df = create_splits_df(sharadar_metadata_df, related_tickers, tickers, start_fetch_date)
+    
     # Write Adjustments
     adjustment_dbpath = os.path.join(output_dir, "adjustments.sqlite")
     sql_daily_bar_reader = SQLiteDailyBarReader(prices_dbpath)
     asset_db_reader = SQLiteAssetFinder(asset_dbpath)
     adjustment_writer = SQLiteDailyAdjustmentWriter(adjustment_dbpath, sql_daily_bar_reader, asset_db_reader, sessions)
     adjustment_writer.write(splits=splits_df, dividends=dividends_df)
+    
     log.info("Processing Fundamentals (SF1)...")
     with closing(sqlite3.connect(asset_dbpath)) as conn, conn, closing(conn.cursor()) as cursor:
         insert_asset_info(sharadar_metadata_df, cursor)
+        
     # Fundamentals
     start_date_fundamentals = asset_db_reader.last_available_fundamentals_dt
     if must_fetch_entire_table(start_date_fundamentals):
         sf1_df = fetch_entire_table(env["NASDAQ_API_KEY"], "SHARADAR/SF1", parse_dates=['datekey', 'reportperiod'])
     else:
         sf1_df = fetch_sf1_table_date(env["NASDAQ_API_KEY"], start_date_fundamentals)
+        
     # Insert Fundamentals
     with closing(sqlite3.connect(asset_dbpath)) as conn, conn, closing(conn.cursor()) as cursor:
         insert_fundamentals(sharadar_metadata_df, sf1_df, cursor, show_progress=True)
     del sf1_df; gc.collect()
+    
     # Daily Metrics
     log.info("Processing Daily Metrics...")
     start_date_metrics = asset_db_reader.last_available_daily_metrics_dt
@@ -257,18 +321,22 @@ def _ingest(start, calendar=get_calendar('XNYS'), output_dir=get_data_dir(), uni
         daily_df = fetch_entire_table(env["NASDAQ_API_KEY"], "SHARADAR/DAILY", parse_dates=['date'])
     else:
         daily_df = fetch_table_by_date(env["NASDAQ_API_KEY"], 'SHARADAR/DAILY', start_date_metrics)
+        
     # Insert Daily Metrics
     with closing(sqlite3.connect(asset_dbpath)) as conn, conn, closing(conn.cursor()) as cursor:
         insert_daily_metrics(sharadar_metadata_df, daily_df, cursor, show_progress=True)
     del daily_df; gc.collect()
+    
     if universe:
         from sharadar.pipeline.universes import update_universe, TRADABLE_STOCKS_US, base_universe, context
         screen = base_universe(context())
         update_universe(TRADABLE_STOCKS_US, screen)
+        
     # Sanity Check
     #if sanity_check:
     #    if asset_db_writer.check_sanity():
     #        log.info("Sanity check successful!")
+    
     Path(os.path.join(output_dir, "ok")).touch()
     log.info("Ingest finished Successfully!")
 
