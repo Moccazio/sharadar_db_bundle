@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Detect and remove duplicate rows in sharadar SQLite databases.
-- python dedupe_prices_db.py --dry-run
 
 Checks:
   prices.sqlite      — prices            keyed on (date, sid)
@@ -9,11 +8,8 @@ Checks:
                      — dividends         keyed on (effective_date, sid)
                      — dividend_payouts  keyed on (date, sid)
                      — stock_dividend_payouts keyed on (sid, ex_date)
-  assets-*.sqlite    — equity_supplementary_mappings keyed on (sid, field, start_date)
-                       (covers both fundamentals and daily metrics)
 """
 import argparse
-import glob
 import os
 import shutil
 import sqlite3
@@ -32,13 +28,6 @@ def default_prices_path() -> str:
 
 def sibling_path(prices_path: str, filename: str) -> str:
     return os.path.join(os.path.dirname(prices_path), filename)
-
-
-def find_assets_db(prices_path: str) -> str:
-    """Return the first assets-*.sqlite found next to prices.sqlite, or empty string."""
-    pattern = sibling_path(prices_path, "assets-*.sqlite")
-    matches = sorted(glob.glob(pattern))
-    return matches[-1] if matches else ""
 
 
 # ---------------------------------------------------------------------------
@@ -141,10 +130,6 @@ ADJUSTMENT_TABLES: List[TableSpec] = [
     ("stock_dividend_payouts",("sid", "ex_date")),
 ]
 
-ASSETS_TABLES: List[TableSpec] = [
-    ("equity_supplementary_mappings", ("sid", "field", "start_date")),
-]
-
 
 def check_and_clean_db(
     db_path: str,
@@ -204,14 +189,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Detect and remove duplicate rows in sharadar SQLite databases "
-            "(prices, adjustments/splits/dividends, fundamentals/metrics)."
+            "(prices, adjustments/splits/dividends)."
         )
     )
     parser.add_argument(
         "--db",
         default=default_prices_path(),
-        help="Path to prices.sqlite (adjustments.sqlite and assets-*.sqlite are auto-located "
-             "in the same directory). Default: ~/.zipline/data/sharadar/latest/prices.sqlite",
+        help="Path to prices.sqlite (adjustments.sqlite is auto-located in the same directory). "
+             "Default: ~/.zipline/data/sharadar/latest/prices.sqlite",
     )
     parser.add_argument(
         "--dry-run",
@@ -227,7 +212,6 @@ def main() -> int:
 
     prices_path = os.path.expanduser(args.db)
     adj_path = sibling_path(prices_path, "adjustments.sqlite")
-    assets_path = find_assets_db(prices_path)
 
     if args.dry_run:
         print("=== DRY RUN — no changes will be made ===")
@@ -246,15 +230,6 @@ def main() -> int:
     before, deleted = check_and_clean_db(adj_path, ADJUSTMENT_TABLES, args.dry_run, args.backup)
     grand_total_before += before
     grand_total_deleted += deleted
-
-    # --- assets-*.sqlite (fundamentals + daily metrics) ---
-    if assets_path:
-        print(f"\n[{os.path.basename(assets_path)}] {assets_path}")
-        before, deleted = check_and_clean_db(assets_path, ASSETS_TABLES, args.dry_run, args.backup)
-        grand_total_before += before
-        grand_total_deleted += deleted
-    else:
-        print("\n[assets-*.sqlite] not found — skipping fundamentals/metrics check")
 
     # --- Summary ---
     print(f"\n=== Summary ===")
