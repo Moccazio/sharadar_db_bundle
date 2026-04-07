@@ -1,5 +1,6 @@
 import datetime
 import os
+import shutil
 import subprocess
 import sys
 from os import environ as env
@@ -30,8 +31,20 @@ class SharadarDbBundleLogger(Logger):
         log_std_handler.format_string = LOG_ENTRY_FMT
         self.handlers.append(log_std_handler)
 
+        self._use_systemd_cat = (
+            os.name == 'posix' and
+            sys.platform.startswith('linux') and
+            shutil.which('systemd-cat') is not None
+        )
+
     def process_record(self, record):
         super().process_record(record)
+        if self._use_systemd_cat:
+            msg = str(record.message).encode("unicode_escape").decode("utf-8")
+            msg = msg.replace('\n', ' ')
+            msg = msg.replace('"', "'")
+            cmd = 'echo "%s" | systemd-cat -t sharadar_db_bundle -p %d' % (msg, LOG_LEVEL_MAP[record.level_name])
+            subprocess.run(cmd, shell=True, check=False)
 
 
 log = SharadarDbBundleLogger()
