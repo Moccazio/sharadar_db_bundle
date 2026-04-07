@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Detect and remove duplicate rows in sharadar SQLite databases.
+- python dedupe_prices_db.py --dry-run
 
 Checks:
   prices.sqlite      — prices            keyed on (date, sid)
