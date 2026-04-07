@@ -7,6 +7,8 @@ import click
 import pandas as pd
 import warnings
 from functools import partial
+
+from exchange_calendars.exchange_calendar_xnys import XNYSExchangeCalendar
 from sharadar.pipeline.engine import *
 from sharadar.util.logger import log
 
@@ -19,8 +21,7 @@ except ImportError:
     PYGMENTS = False
 import six
 from toolz import concatv
-#from exchange_calendars import get_calendar
-from zipline.utils.calendar_utils import get_calendar # zipline-reloaded
+from exchange_calendars import get_calendar
 
 from zipline.data.data_portal import DataPortal
 from sharadar.live.data_portal_live import DataPortalLive
@@ -33,14 +34,34 @@ from zipline.algorithm import TradingAlgorithm
 from sharadar.live.algorithm_live import LiveTradingAlgorithm
 from zipline.finance.blotter import Blotter
 from sharadar.util.serialization_utils import store_context
-#from exchange_calendars import register_calendar_alias
-from zipline.utils.calendar_utils import register_calendar_alias
+from exchange_calendars import register_calendar_alias
 from exchange_calendars.errors import CalendarNameCollision
 from sharadar.pipeline.engine import returns
+from zipline.utils.events import TradingDayOfWeekRule, TradingDayOfMonthRule
 
 #ignore exchange_calendars FutureWarning
 from warnings import simplefilter
 simplefilter(action='ignore', category=FutureWarning)
+
+
+def _patch_zipline_event_rules_for_calendar_boundary():
+    def _safe_should_trigger(rule):
+        def _patched(self, dt):
+            # Some exchange_calendars versions consider session close as a non-trading minute.
+            # Fall back to previous session so schedule_function date rules remain robust.
+            try:
+                value = self.cal.minute_to_session(dt, direction="none").value
+            except ValueError:
+                value = self.cal.minute_to_session(dt, direction="previous").value
+            return value in self.execution_period_values
+
+        return _patched
+
+    TradingDayOfWeekRule.should_trigger = _safe_should_trigger(TradingDayOfWeekRule)
+    TradingDayOfMonthRule.should_trigger = _safe_should_trigger(TradingDayOfMonthRule)
+
+
+_patch_zipline_event_rules_for_calendar_boundary()
 
 class _RunAlgoError(click.ClickException, ValueError):
     """Signal an error that should have a different message if invoked from
@@ -101,7 +122,8 @@ def _run(handle_data,
     log.info("Using bundle '%s'." % bundle)
 
     if trading_calendar is None:
-        trading_calendar = get_calendar('XNYS')
+        trading_calendar = get_calendar('XNYS', start=pd.Timestamp('2000-01-01 00:00:00'))
+    log.info("Using trading calendar '%s'." % trading_calendar.default_start())
 
     bundle_data = load_sharadar_bundle(bundle)
     now = pd.Timestamp.today().normalize()
@@ -131,7 +153,7 @@ def _run(handle_data,
         log.info("Backtest from %s to %s." % (start.date(), end.date()))
 
     if benchmark_symbol:
-        benchmark = symbol(benchmark_symbol, as_of_date=bundle_data.equity_daily_bar_reader.last_available_dt)
+        benchmark = symbol(benchmark_symbol)
         benchmark_sid = benchmark.sid
         benchmark_returns = returns([benchmark], start, end)
     else:
