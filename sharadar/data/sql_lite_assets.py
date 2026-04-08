@@ -329,12 +329,13 @@ class SQLiteAssetDBWriter(AssetDBWriter):
         field = 'category'
 
         expected = [
+            'Preferred',
+            'Warrant',
             'ADR Common Stock',
             'ADR Common Stock Primary Class',
             'ADR Common Stock Secondary Class',
             'ADR Common Stock Warrant',
             'ADR Preferred Stock',
-            'ADR Stock Warrant',
             'CEF',
             'CEF Preferred',
             'CEF Warrant',
@@ -343,13 +344,11 @@ class SQLiteAssetDBWriter(AssetDBWriter):
             'Canadian Common Stock Secondary Class',
             'Canadian Common Stock Warrant',
             'Canadian Preferred Stock',
-            'Canadian Stock Warrant',
             'Domestic Common Stock',
             'Domestic Common Stock Primary Class',
             'Domestic Common Stock Secondary Class',
             'Domestic Common Stock Warrant',
             'Domestic Preferred Stock',
-            'Domestic Stock Warrant',
             'ETD',
             'ETF',
             'ETMF',
