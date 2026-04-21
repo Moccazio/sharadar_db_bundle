@@ -403,17 +403,24 @@ def beta_residual(Y, X, allowed_missing=0, standardize=False):
     return (beta, residual_var)
 
 
+#class Beta(CustomFactor):
+#    outputs = ['beta', 'residual_var']
+#    inputs = [DailyReturns(), DailyReturns()[symbol('SPY', as_of_date=bundle.equity_daily_bar_reader.last_available_dt)]]
+#    window_length = 252
+#    params = ('standardize',)
+#    def compute(self, today, assets, out, assets_returns, market_returns, standardize):
+#        allowed_missing_percentage = 0.25
+#        allowed_missing_count = int(allowed_missing_percentage * self.window_length)
+#        (out.beta, out.residual_var) = beta_residual(assets_returns, market_returns, allowed_missing_count, standardize)
+
+# Risk Factors
 class Beta(CustomFactor):
-    outputs = ['beta', 'residual_var']
-    inputs = [DailyReturns(), DailyReturns()[symbol('SPY', as_of_date=bundle.equity_daily_bar_reader.last_available_dt)]]
-    window_length = 252
-    params = ('standardize',)
-
-    def compute(self, today, assets, out, assets_returns, market_returns, standardize):
-        allowed_missing_percentage = 0.25
-        allowed_missing_count = int(allowed_missing_percentage * self.window_length)
-        (out.beta, out.residual_var) = beta_residual(assets_returns, market_returns, allowed_missing_count, standardize)
-
+    """Robust beta and residual variance estimation."""
+    outputs, inputs, window_length, params = ['beta', 'residual_var'], [DailyReturns()], 252, ('standardize',)
+    def compute(self, today, assets, out, assets_returns, standardize):
+        spy_idx = np.where(assets == 118691)[0]
+        market_returns = assets_returns[:, spy_idx[0]:spy_idx[0]+1] if len(spy_idx) > 0 else nanmean(assets_returns, axis=1, keepdims=True)
+        out.beta, out.residual_var = beta_residual(assets_returns, market_returns, int(0.4 * self.window_length), standardize)
 
 class Previous(CustomFactor):
     def compute(self, today, assets, out, data):
